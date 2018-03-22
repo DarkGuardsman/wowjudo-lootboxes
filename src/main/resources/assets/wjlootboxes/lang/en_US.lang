@@ -1,6 +1,6 @@
-tile.wjlootboxes.box.name=Crate
-tile.wjlootboxes.box.0.name=Wooden Crate
-tile.wjlootboxes.box.1.name=Stone Crate
-tile.wjlootboxes.box.2.name=Iron Crate
-tile.wjlootboxes.box.3.name=Gold Crate
-tile.wjlootboxes.box.4.name=Diamond Crate
+tile.wjlootboxes:box.name=Crate
+tile.wjlootboxes:box.0.name=Wooden Crate
+tile.wjlootboxes:box.1.name=Stone Crate
+tile.wjlootboxes:box.2.name=Iron Crate
+tile.wjlootboxes:box.3.name=Gold Crate
+tile.wjlootboxes:box.4.name=Diamond Crate
