@@ -6,6 +6,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
+import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.World;
@@ -17,13 +18,13 @@ import net.minecraft.world.World;
 public class BlockLootbox extends Block
 {
     @SideOnly(Side.CLIENT)
-    IIcon[] icons;
+    private IIcon[] icons;
 
     public BlockLootbox()
     {
         super(Material.wood);
         setBlockName(WJLootBoxes.PREFIX + "box");
-        registerBlockIcons();
+        setCreativeTab(CreativeTabs.tabBlock);
     }
 
     @Override
@@ -44,6 +45,9 @@ public class BlockLootbox extends Block
     public void registerBlockIcons(IIconRegister reg)
     {
         icons = new IIcon[WJLootBoxes.NUMBER_OF_TIERS];
-        this.blockIcon = reg.registerIcon(this.getTextureName());
+        for (int tier = 0; tier < icons.length; tier++)
+        {
+            this.blockIcon = reg.registerIcon(WJLootBoxes.PREFIX + "box." + tier);
+        }
     }
 }

@@ -1,13 +1,19 @@
 package com.builtbroken.wjlootboxes;
 
 import com.builtbroken.wjlootboxes.box.BlockLootbox;
+import com.builtbroken.wjlootboxes.box.ItemBlockLootbox;
 import com.builtbroken.wjlootboxes.box.TileEntityLootbox;
 import com.builtbroken.wjlootboxes.loot.LootHandler;
 import com.builtbroken.wjlootboxes.spawner.BoxSpawner;
 import cpw.mods.fml.common.Mod;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraftforge.common.config.Configuration;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.io.File;
 
 /**
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
@@ -21,6 +27,9 @@ public class WJLootBoxes
 
     public static final int NUMBER_OF_TIERS = 5;
 
+    public static Logger LOGGER;
+    public static File configFolder;
+
     public static BlockLootbox blockLootbox;
 
     public static LootHandler lootHandler;
@@ -29,9 +38,12 @@ public class WJLootBoxes
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event)
     {
+        //Create logger so we can print errors and info
+        LOGGER = LogManager.getLogger("WJ_LootBoxes");
+
         //Create and register box
         blockLootbox = new BlockLootbox();
-        GameRegistry.registerBlock(blockLootbox, "box");
+        GameRegistry.registerBlock(blockLootbox, ItemBlockLootbox.class, "box");
         GameRegistry.registerTileEntity(TileEntityLootbox.class, PREFIX + "box");
 
         //Load handlers
@@ -39,14 +51,22 @@ public class WJLootBoxes
         boxSpawner = new BoxSpawner();
 
         //Load settings
-        Configuration configuration = new Configuration(event.getSuggestedConfigurationFile());
-        configuration.load();
-        loadConfiguration(configuration);
-        configuration.save();
+        configFolder = new File(event.getModConfigurationDirectory(), "wj_lootboxes");
+        loadConfiguration(configFolder);
     }
 
-    private void loadConfiguration(Configuration configuration)
+    @Mod.EventHandler
+    public void postInit(FMLPostInitializationEvent event)
     {
+        lootHandler.loadLootData(configFolder); //TODO consider moving to world load
+    }
 
+    private void loadConfiguration(File folder)
+    {
+        Configuration configuration = new Configuration(folder, "main.cfg");
+        configuration.load();
+        lootHandler.loadConfiguration(configuration);
+        boxSpawner.loadConfiguration(configuration);
+        configuration.save();
     }
 }
