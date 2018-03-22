@@ -8,8 +8,12 @@ import net.minecraft.block.material.Material;
 import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.init.Blocks;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.World;
+
+import java.util.List;
 
 /**
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
@@ -47,7 +51,16 @@ public class BlockLootbox extends Block
         icons = new IIcon[WJLootBoxes.NUMBER_OF_TIERS];
         for (int tier = 0; tier < icons.length; tier++)
         {
-            this.blockIcon = reg.registerIcon(WJLootBoxes.PREFIX + "box." + tier);
+            icons[tier] = reg.registerIcon(WJLootBoxes.PREFIX + "box." + tier);
+        }
+    }
+
+    @Override
+    public void getSubBlocks(Item item, CreativeTabs tab, List list)
+    {
+        for (int tier = 0; tier < icons.length; tier++)
+        {
+            list.add(new ItemStack(item, 1, tier));
         }
     }
 }
