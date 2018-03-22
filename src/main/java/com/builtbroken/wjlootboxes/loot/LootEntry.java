@@ -13,8 +13,8 @@ import java.util.ArrayList;
  */
 public class LootEntry
 {
-    private ItemStack stack;
-    private String oreName;
+    public ItemStack stack;
+    public String oreName;
 
     /** Minimal items to drop, should be 1 */
     public int minCount;
@@ -29,6 +29,14 @@ public class LootEntry
         this.stack = stack;
     }
 
+    public LootEntry(ItemStack stack, int min, int max, float chance)
+    {
+        this.stack = stack;
+        this.minCount = min;
+        this.maxCount = max;
+        this.chanceToDrop = chance;
+    }
+
     public LootEntry(String ore)
     {
         this.oreName = ore;
@@ -39,15 +47,22 @@ public class LootEntry
     {
         if (oreName != null)
         {
+            //Get ore values for name
             ArrayList<ItemStack> items = OreDictionary.getOres(oreName);
             if (items != null && items.size() > 0)
             {
-
                 //Try a few times to get an entry
                 for (int i = 0; i < 6; i++)
                 {
+                    //Get random
                     int index = (int) (Math.random() * items.size());
                     ItemStack stack = items.get(index);
+
+                    //Check for null, chance ore values can be null
+                    if (stack != null)
+                    {
+                        return stack.copy(); //Return copy to prevent break ore dictionary
+                    }
                 }
             }
         }

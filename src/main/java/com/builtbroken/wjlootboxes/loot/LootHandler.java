@@ -1,13 +1,13 @@
 package com.builtbroken.wjlootboxes.loot;
 
 import com.builtbroken.wjlootboxes.WJLootBoxes;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import net.minecraft.block.Block;
 import net.minecraft.entity.item.EntityItem;
+import net.minecraft.init.Blocks;
+import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.world.World;
@@ -28,6 +28,12 @@ public class LootHandler
     public static final String JSON_MIN_LOOT = "loot_min_count";
     public static final String JSON_MAX_LOOT = "loot_min_count";
     public static final String JSON_LOOT_ARRAY = "loot_entries";
+
+    public static final String JSON_ITEM_ID = "item";
+    public static final String JSON_ITEM_META = "data";
+    public static final String JSON_ITEM_MIN_COUNT = "min_count";
+    public static final String JSON_ITEM_MAX_COUNT = "max_count";
+    public static final String JSON_ITEM_CHANCE = "chance";
 
     /** Tiers of loot boxes that exist */
     public final int tiers;
@@ -88,15 +94,20 @@ public class LootHandler
                 //Loop a few times to get a random entry
                 for (int r = 0; r < 6; r++)
                 {
+                    //Get random entry to allow a chance for all entries to be used
                     LootEntry lootEntry = possibleItems[world.rand.nextInt(possibleItems.length - 1)];
 
-                    //Random chance
-                    if (world.rand.nextFloat() > lootEntry.chanceToDrop
-                            //Duplication check
-                            && (allowDuplicateEntries || !lootToSpawn.contains(lootEntry)))
+                    //Null check, loaded data can result in nulls in rare cases
+                    if (lootEntry != null)
                     {
-                        lootToSpawn.add(lootEntry);
-                        break; //Exit loop
+                        //Random chance
+                        if (world.rand.nextFloat() > lootEntry.chanceToDrop
+                                //Duplication check
+                                && (allowDuplicateEntries || !lootToSpawn.contains(lootEntry)))
+                        {
+                            lootToSpawn.add(lootEntry);
+                            break; //Exit loop
+                        }
                     }
                 }
             }
@@ -219,7 +230,14 @@ public class LootHandler
     {
         for (int tier = 0; tier < tiers; tier++)
         {
-            saveDataFor(tier, getFileForTier(tier));
+            try
+            {
+                saveDataFor(tier, getFileForTier(tier));
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -263,14 +281,16 @@ public class LootHandler
                     if (lootEntryElement.isJsonObject())
                     {
                         final JsonObject lootData = lootEntryElement.getAsJsonObject();
-                        String itemName = lootData.get("item").getAsString();
-                        int data = lootData.get("data").getAsInt();
-                        int min = lootData.get("min_count").getAsInt();
-                        int max = lootData.get("max_count").getAsInt();
-                        float chance = lootData.get("chance").getAsFloat();
 
+                        //Load data
+                        String itemName = lootData.get(JSON_ITEM_ID).getAsString();
+                        int data = lootData.get(JSON_ITEM_META).getAsInt();
+                        int min = lootData.get(JSON_MIN_LOOT).getAsInt();
+                        int max = lootData.get(JSON_MAX_LOOT).getAsInt();
+                        float chance = lootData.get(JSON_ITEM_CHANCE).getAsFloat();
+
+                        //Create entry
                         LootEntry lootEntry = null;
-
                         if (itemName.startsWith("ore@"))
                         {
                             lootEntry = new LootEntry(itemName.substring(4, itemName.length()));
@@ -294,9 +314,12 @@ public class LootHandler
 
                         if (lootEntry != null)
                         {
+                            //Load data into entry
                             lootEntry.minCount = min;
                             lootEntry.minCount = max;
                             lootEntry.chanceToDrop = chance;
+
+                            //Add to array
                             loot[tier][i++] = lootEntry;
                         }
                         else
@@ -325,9 +348,46 @@ public class LootHandler
         return true;
     }
 
-    protected void saveDataFor(int tier, File file)
+    protected void saveDataFor(int tier, File writeFile) throws IOException
     {
+        JsonObject object = new JsonObject();
+        object.add(JSON_MIN_LOOT, new JsonPrimitive(minLootCount[tier]));
+        object.add(JSON_MAX_LOOT, new JsonPrimitive(maxLootCount[tier]));
 
+        JsonArray array = new JsonArray();
+        if (loot[tier] != null)
+        {
+            for (LootEntry lootEntry : loot[tier])
+            {
+                if (lootEntry != null)
+                {
+                    JsonObject lootData = new JsonObject();
+                    if (lootEntry.oreName != null)
+                    {
+                        lootData.add(JSON_ITEM_ID, new JsonPrimitive("ore@" + lootEntry.oreName));
+                        lootData.add(JSON_ITEM_META, new JsonPrimitive(0));
+                    }
+                    else
+                    {
+                        lootData.add(JSON_ITEM_ID, new JsonPrimitive(Item.itemRegistry.getNameForObject(lootEntry.stack.getItem())));
+                        lootData.add(JSON_ITEM_META, new JsonPrimitive(lootEntry.stack.getItemDamage()));
+                    }
+
+                    lootData.add(JSON_ITEM_MIN_COUNT, new JsonPrimitive(lootEntry.minCount));
+                    lootData.add(JSON_ITEM_MAX_COUNT, new JsonPrimitive(lootEntry.maxCount));
+                    lootData.add(JSON_ITEM_CHANCE, new JsonPrimitive(lootEntry.chanceToDrop));
+
+                    array.add(lootData);
+                }
+            }
+        }
+        object.add(JSON_LOOT_ARRAY, array);
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        try (FileWriter fileWriter = new FileWriter(writeFile))
+        {
+            fileWriter.write(gson.toJson(object));
+        }
     }
 
     protected File getFileForTier(int tier)
@@ -337,7 +397,62 @@ public class LootHandler
 
     private void generateDefaultData()
     {
-        //TODO generate default data
+        minLootCount[0] = 1;
+        maxLootCount[0] = 3;
+        allowDuplicateDrops[0] = true;
+        loot[0] = new LootEntry[5];
+        loot[0][0] = new LootEntry(new ItemStack(Items.stick), 5, 100, 1);
+        loot[0][1] = new LootEntry(new ItemStack(Items.leather_boots), 1, 1, 0.1f);
+        loot[0][2] = new LootEntry(new ItemStack(Items.carrot), 5, 10, 0.5f);
+        loot[0][3] = new LootEntry(new ItemStack(Items.stone_axe), 1, 2, 0.3f);
+        loot[0][4] = new LootEntry(new ItemStack(Items.cooked_beef), 3, 10, 0.1f);
+
+
+        minLootCount[1] = 1;
+        maxLootCount[1] = 5;
+        allowDuplicateDrops[1] = true;
+        loot[1] = new LootEntry[5];
+        loot[1][0] = new LootEntry(new ItemStack(Blocks.stone), 5, 100, 1);
+        loot[1][1] = new LootEntry(new ItemStack(Items.leather_chestplate), 1, 1, 0.1f);
+        loot[1][2] = new LootEntry(new ItemStack(Items.flint_and_steel), 1, 1, 0.5f);
+        loot[1][3] = new LootEntry(new ItemStack(Items.stone_pickaxe), 1, 3, 0.3f);
+        loot[1][4] = new LootEntry(new ItemStack(Items.chainmail_helmet), 1, 1, 0.1f);
+
+        minLootCount[2] = 2;
+        maxLootCount[2] = 6;
+        allowDuplicateDrops[2] = true;
+        loot[2] = new LootEntry[5];
+        loot[2][0] = new LootEntry(new ItemStack(Blocks.dirt), 5, 100, 1);
+        loot[2][1] = new LootEntry(new ItemStack(Items.leather_boots), 1, 1, 0.1f);
+        loot[2][2] = new LootEntry(new ItemStack(Blocks.bookshelf), 5, 10, 0.5f);
+        loot[2][3] = new LootEntry(new ItemStack(Items.iron_axe), 1, 2, 0.3f);
+        loot[2][4] = new LootEntry(new ItemStack(Items.iron_ingot), 3, 10, 0.1f);
+
+        minLootCount[0] = 3;
+        maxLootCount[0] = 7;
+        allowDuplicateDrops[0] = true;
+        loot[3] = new LootEntry[5];
+        loot[3][0] = new LootEntry(new ItemStack(Items.stick), 5, 100, 1);
+        loot[3][1] = new LootEntry(new ItemStack(Items.leather_boots), 1, 1, 0.1f);
+        loot[3][2] = new LootEntry(new ItemStack(Items.carrot), 5, 10, 0.5f);
+        loot[3][3] = new LootEntry(new ItemStack(Items.stone_axe), 1, 2, 0.3f);
+        loot[3][4] = new LootEntry(new ItemStack(Items.gold_ingot), 3, 10, 0.1f);
+
+        minLootCount[4] = 4;
+        maxLootCount[4] = 10;
+        allowDuplicateDrops[4] = true;
+        loot[4] = new LootEntry[10];
+        loot[4][0] = new LootEntry(new ItemStack(Items.flint), 5, 100, 1);
+        loot[4][1] = new LootEntry(new ItemStack(Items.diamond_axe), 1, 1, 0.1f);
+        loot[4][2] = new LootEntry(new ItemStack(Items.blaze_rod), 5, 10, 0.5f);
+        loot[4][3] = new LootEntry(new ItemStack(Items.diamond_boots), 1, 2, 0.3f);
+        loot[4][4] = new LootEntry(new ItemStack(Items.diamond_hoe), 3, 10, 0.1f);
+        loot[4][5] = new LootEntry(new ItemStack(Items.diamond_horse_armor), 5, 100, 1);
+        loot[4][6] = new LootEntry(new ItemStack(Items.diamond_pickaxe), 1, 1, 0.1f);
+        loot[4][7] = new LootEntry(new ItemStack(Items.diamond_shovel), 5, 10, 0.5f);
+        loot[4][8] = new LootEntry(new ItemStack(Items.diamond_sword), 1, 2, 0.3f);
+        loot[4][49] = new LootEntry(new ItemStack(Items.diamond), 3, 10, 0.8f);
+
         saveLootData();
     }
 }

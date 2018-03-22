@@ -14,5 +14,8 @@ changelog.html
 logs/
 output/
 /bin/
+/out/
 /saves
 *.iws
+
+*.ipr
