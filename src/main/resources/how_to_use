@@ -18,7 +18,7 @@ File: loot_table_tier_#.json
         "data": 0,                   -- Metadata value or damage of the item (subtypes, ignored for ore dictionary values)
         "min_count": 1,              -- Lower limit of stack size
         "max_count": 1000,           -- Upper limit of stack size, if over max stack size will drop several items (keep small to reduce lag)
-        "chance": 0.5                -- Chance to use this entry (Random Number > chance will result in a drop)
+        "chance": 0.5                -- Chance to use this entry (Random Number < chance will result in a drop)
       },
       {
         -- each additional entry will be placed inside {} separated by ,

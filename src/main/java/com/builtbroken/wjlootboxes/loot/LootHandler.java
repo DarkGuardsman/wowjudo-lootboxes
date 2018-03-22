@@ -26,7 +26,7 @@ import java.util.List;
 public class LootHandler
 {
     public static final String JSON_MIN_LOOT = "loot_min_count";
-    public static final String JSON_MAX_LOOT = "loot_min_count";
+    public static final String JSON_MAX_LOOT = "loot_max_count";
     public static final String JSON_LOOT_ARRAY = "loot_entries";
 
     public static final String JSON_ITEM_ID = "item";
@@ -101,7 +101,7 @@ public class LootHandler
                     if (lootEntry != null)
                     {
                         //Random chance
-                        if (world.rand.nextFloat() > lootEntry.chanceToDrop
+                        if (world.rand.nextFloat() < lootEntry.chanceToDrop
                                 //Duplication check
                                 && (allowDuplicateEntries || !lootToSpawn.contains(lootEntry)))
                         {
@@ -125,7 +125,11 @@ public class LootHandler
                     stack = stack.copy();
 
                     //Randomize stack size
-                    stack.stackSize = lootEntry.minCount + world.rand.nextInt(lootEntry.maxCount);
+                    stack.stackSize = lootEntry.minCount;
+                    if (lootEntry.minCount < lootEntry.maxCount)
+                    {
+                        stack.stackSize += world.rand.nextInt(lootEntry.maxCount - lootEntry.minCount);
+                    }
 
                     //Drop items until stack is empty
                     while (stack != null && stack.stackSize > 0)
@@ -285,8 +289,8 @@ public class LootHandler
                         //Load data
                         String itemName = lootData.get(JSON_ITEM_ID).getAsString();
                         int data = lootData.get(JSON_ITEM_META).getAsInt();
-                        int min = lootData.get(JSON_MIN_LOOT).getAsInt();
-                        int max = lootData.get(JSON_MAX_LOOT).getAsInt();
+                        int min = lootData.get(JSON_ITEM_MIN_COUNT).getAsInt();
+                        int max = lootData.get(JSON_ITEM_MAX_COUNT).getAsInt();
                         float chance = lootData.get(JSON_ITEM_CHANCE).getAsFloat();
 
                         //Create entry
@@ -316,7 +320,7 @@ public class LootHandler
                         {
                             //Load data into entry
                             lootEntry.minCount = min;
-                            lootEntry.minCount = max;
+                            lootEntry.maxCount = max;
                             lootEntry.chanceToDrop = chance;
 
                             //Add to array
@@ -350,6 +354,7 @@ public class LootHandler
 
     protected void saveDataFor(int tier, File writeFile) throws IOException
     {
+        //Generate JSON for output
         JsonObject object = new JsonObject();
         object.add(JSON_MIN_LOOT, new JsonPrimitive(minLootCount[tier]));
         object.add(JSON_MAX_LOOT, new JsonPrimitive(maxLootCount[tier]));
@@ -383,6 +388,14 @@ public class LootHandler
         }
         object.add(JSON_LOOT_ARRAY, array);
 
+
+        //Ensure the folder exists
+        if (!writeFile.getParentFile().exists())
+        {
+            writeFile.getParentFile().mkdirs();
+        }
+
+        //Write file to disk
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         try (FileWriter fileWriter = new FileWriter(writeFile))
         {
@@ -392,7 +405,7 @@ public class LootHandler
 
     protected File getFileForTier(int tier)
     {
-        return new File(lootDataFolder, "loot_table_tier_" + tier);
+        return new File(lootDataFolder, "loot_table_tier_" + tier + ".json");
     }
 
     private void generateDefaultData()
@@ -428,9 +441,9 @@ public class LootHandler
         loot[2][3] = new LootEntry(new ItemStack(Items.iron_axe), 1, 2, 0.3f);
         loot[2][4] = new LootEntry(new ItemStack(Items.iron_ingot), 3, 10, 0.1f);
 
-        minLootCount[0] = 3;
-        maxLootCount[0] = 7;
-        allowDuplicateDrops[0] = true;
+        minLootCount[3] = 3;
+        maxLootCount[3] = 7;
+        allowDuplicateDrops[3] = true;
         loot[3] = new LootEntry[5];
         loot[3][0] = new LootEntry(new ItemStack(Items.stick), 5, 100, 1);
         loot[3][1] = new LootEntry(new ItemStack(Items.leather_boots), 1, 1, 0.1f);
@@ -446,12 +459,12 @@ public class LootHandler
         loot[4][1] = new LootEntry(new ItemStack(Items.diamond_axe), 1, 1, 0.1f);
         loot[4][2] = new LootEntry(new ItemStack(Items.blaze_rod), 5, 10, 0.5f);
         loot[4][3] = new LootEntry(new ItemStack(Items.diamond_boots), 1, 2, 0.3f);
-        loot[4][4] = new LootEntry(new ItemStack(Items.diamond_hoe), 3, 10, 0.1f);
-        loot[4][5] = new LootEntry(new ItemStack(Items.diamond_horse_armor), 5, 100, 1);
+        loot[4][4] = new LootEntry(new ItemStack(Items.diamond_hoe), 1, 2, 0.1f);
+        loot[4][5] = new LootEntry(new ItemStack(Items.diamond_horse_armor), 1, 1, 0.1f);
         loot[4][6] = new LootEntry(new ItemStack(Items.diamond_pickaxe), 1, 1, 0.1f);
-        loot[4][7] = new LootEntry(new ItemStack(Items.diamond_shovel), 5, 10, 0.5f);
+        loot[4][7] = new LootEntry(new ItemStack(Items.diamond_shovel), 1, 2, 0.5f);
         loot[4][8] = new LootEntry(new ItemStack(Items.diamond_sword), 1, 2, 0.3f);
-        loot[4][49] = new LootEntry(new ItemStack(Items.diamond), 3, 10, 0.8f);
+        loot[4][9] = new LootEntry(new ItemStack(Items.diamond), 3, 10, 0.8f);
 
         saveLootData();
     }

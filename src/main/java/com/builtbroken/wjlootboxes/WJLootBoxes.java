@@ -51,7 +51,7 @@ public class WJLootBoxes
         boxSpawner = new BoxSpawner();
 
         //Load settings
-        configFolder = new File(event.getModConfigurationDirectory(), "wj_lootboxes");
+        configFolder = new File(event.getModConfigurationDirectory(), DOMAIN);
         loadConfiguration(configFolder);
     }
 
@@ -63,7 +63,13 @@ public class WJLootBoxes
 
     private void loadConfiguration(File folder)
     {
-        Configuration configuration = new Configuration(folder, "main.cfg");
+        File configFile = new File(folder, "main.cfg");
+        if (!configFile.getParentFile().exists())
+        {
+            configFile.getParentFile().mkdirs();
+        }
+
+        Configuration configuration = new Configuration(configFile);
         configuration.load();
         lootHandler.loadConfiguration(configuration);
         boxSpawner.loadConfiguration(configuration);
