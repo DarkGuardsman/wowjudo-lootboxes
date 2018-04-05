@@ -5,9 +5,13 @@ import com.builtbroken.wjlootboxes.box.ItemBlockLootbox;
 import com.builtbroken.wjlootboxes.box.TileEntityLootbox;
 import com.builtbroken.wjlootboxes.loot.LootHandler;
 import com.builtbroken.wjlootboxes.spawner.BoxSpawner;
+import com.builtbroken.wjlootboxes.spawner.BoxSpawnerThread;
+import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerStartingEvent;
+import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraftforge.common.config.Configuration;
 import org.apache.logging.log4j.LogManager;
@@ -34,6 +38,7 @@ public class WJLootBoxes
 
     public static LootHandler lootHandler;
     public static BoxSpawner boxSpawner;
+    public static BoxSpawnerThread thread;
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event)
@@ -50,6 +55,8 @@ public class WJLootBoxes
         lootHandler = new LootHandler(NUMBER_OF_TIERS);
         boxSpawner = new BoxSpawner();
 
+        FMLCommonHandler.instance().bus().register(boxSpawner);
+
         //Load settings
         configFolder = new File(event.getModConfigurationDirectory(), DOMAIN);
         loadConfiguration(configFolder);
@@ -59,6 +66,19 @@ public class WJLootBoxes
     public void postInit(FMLPostInitializationEvent event)
     {
         lootHandler.loadLootData(configFolder); //TODO consider moving to world load
+    }
+
+    @Mod.EventHandler
+    public void onServerStart(FMLServerStartingEvent event)
+    {
+        thread = new BoxSpawnerThread();
+        thread.startScanner();
+    }
+
+    @Mod.EventHandler
+    public void onServerStop(FMLServerStoppingEvent event)
+    {
+        thread.kill();
     }
 
     private void loadConfiguration(File folder)
