@@ -65,7 +65,9 @@ public class WJLootBoxes
     @Mod.EventHandler
     public void postInit(FMLPostInitializationEvent event)
     {
-        lootHandler.loadLootData(configFolder); //TODO consider moving to world load
+        //Load data late to allow for blocks to load first
+        lootHandler.loadLootData(configFolder);
+        boxSpawner.loadSpawnData(configFolder);
     }
 
     @Mod.EventHandler

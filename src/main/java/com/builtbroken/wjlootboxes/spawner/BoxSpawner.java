@@ -5,7 +5,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.world.World;
 import net.minecraftforge.common.config.Configuration;
 
-import java.util.ArrayList;
+import java.io.File;
 import java.util.HashMap;
 
 /**
@@ -15,12 +15,14 @@ import java.util.HashMap;
 public class BoxSpawner
 {
     public HashMap<Integer, BoxSpawnerWorld> worldToSpawnHandler = new HashMap();
+    private String spawnDataPath = "./spawning";
+    private File dataFolder;
 
     @SubscribeEvent
     public void onWorldTick(TickEvent.WorldTickEvent event)
     {
         BoxSpawnerWorld boxSpawnerWorld = get(event.world);
-        if(boxSpawnerWorld != null)
+        if (boxSpawnerWorld != null)
         {
             boxSpawnerWorld.update(event.world, event.phase);
         }
@@ -34,15 +36,14 @@ public class BoxSpawner
         String[] worldsAsString = configuration.getStringList("worlds", category, new String[]{"0"}, "World to run box spawning inside");
 
         //Parse dim IDs
-        ArrayList<Integer> list = new ArrayList(worldsAsString.length);
         for (String s : worldsAsString)
         {
             try
             {
                 int id = Integer.parseInt(s);
-                if(!list.contains(id))
+                if (worldToSpawnHandler.containsKey(id))
                 {
-                    list.add(id);
+                    worldToSpawnHandler.put(id, null);
                 }
             }
             catch (NumberFormatException e)
@@ -51,13 +52,43 @@ public class BoxSpawner
             }
         }
 
-        //Build spawn handlers
-        for(int i : list)
+        spawnDataPath = configuration.getString("spawnDataPath", category, spawnDataPath, "Path to load " +
+                "box spawning data from. Add './' in front for relative path, or else use the full system path.");
+    }
+
+    public void loadSpawnData(File folder)
+    {
+        //Get path
+        if (spawnDataPath.startsWith("./"))
         {
-            worldToSpawnHandler.put(i, new BoxSpawnerWorld(i));
+            dataFolder = new File(folder, spawnDataPath.substring(2, spawnDataPath.length()));
+        }
+        else
+        {
+            dataFolder = new File(spawnDataPath);
         }
 
-        //Load data
+        //Ensure the folder exists
+        if (!dataFolder.exists())
+        {
+            dataFolder.mkdirs();
+        }
+
+        //Build spawn handlers
+        for (int i : worldToSpawnHandler.keySet())
+        {
+            if (worldToSpawnHandler.get(i) == null)
+            {
+                BoxSpawnerWorld settings = new BoxSpawnerWorld(i);
+                worldToSpawnHandler.put(i, settings);
+                settings.loadData(getFileForWorld(i));
+            }
+        }
+    }
+
+    protected File getFileForWorld(int tier)
+    {
+        return new File(dataFolder, "spawn_settings_for_dim_" + tier + ".json");
     }
 
     public BoxSpawnerWorld get(World world)
