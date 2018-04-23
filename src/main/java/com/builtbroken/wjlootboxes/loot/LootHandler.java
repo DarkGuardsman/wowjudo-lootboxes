@@ -169,7 +169,7 @@ public class LootHandler
     public void loadConfiguration(Configuration configuration)
     {
         final String category = "loot_handler";
-        lootDataPath = configuration.getString("looDataPath", category, lootDataPath, "Path to load " +
+        lootDataPath = configuration.getString("lootDataPath", category, lootDataPath, "Path to load " +
                 "loot table data from. Add './' in front for relative path, or else use the full system path.");
     }
 
