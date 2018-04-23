@@ -18,9 +18,6 @@ import java.util.*;
  */
 public class BoxSpawnerThread extends Thread
 {
-    /** Delay before re-scanning a chunk that has already been scanned */
-    public static int SCAN_DELAY = 2 * 60 * 1000; //10 mins
-
     /** Checked in all loops in order to kill the thread if false */
     public boolean shouldRun = true;
 
@@ -30,6 +27,9 @@ public class BoxSpawnerThread extends Thread
     /** Map of worlds, to maps of chunks and when they were scanned last( in milli-seconds) */
     private HashMap<Integer, HashMap<ChunkCoordIntPair, Long>> lastScanTimes = new HashMap();
 
+    /** Map of worlds to last time scanned */
+    private HashMap<Integer, Long> lastWorldScanTimes = new HashMap();
+
     @Override
     public void run()
     {
@@ -38,49 +38,65 @@ public class BoxSpawnerThread extends Thread
         {
             try
             {
-                if (world() instanceof WorldServer)
+                final World currentScanWorld = world();
+                final BoxSpawnerWorld settings = WJLootBoxes.boxSpawner.get(currentScanWorld);
+                if (currentScanWorld instanceof WorldServer && settings != null)
                 {
-                    WorldServer world = (WorldServer) world();
-                    BoxSpawnerWorld settings = WJLootBoxes.boxSpawner.get(world);
-                    if (settings != null)
+                    final WorldServer world = (WorldServer) world();
+                    //Get scan times for chunks
+                    HashMap<ChunkCoordIntPair, Long> lastScanned = lastScanTimes.get(currentScanningWorld); //TODO maybe clear really old values?
+                    if (lastScanned == null)
                     {
+                        lastScanned = new HashMap();
+                    }
 
-                        HashMap<ChunkCoordIntPair, Long> lastScanned = lastScanTimes.get(currentScanningWorld);
-                        if (lastScanned == null)
+                    //Get list of chunks to scan
+                    Queue<Chunk> que = new LinkedList();
+                    que.addAll(world.theChunkProviderServer.loadedChunks);
+
+                    int chunksScanned = 0;
+                    //Loop until we run out of stuff
+                    while (!que.isEmpty() && shouldRun)
+                    {
+                        //Get next chunk
+                        Chunk chunk = que.poll();
+                        if (chunk != null)
                         {
-                            lastScanned = new HashMap();
-                        }
-
-                        //Get list of chunks to scan
-                        Queue<Chunk> que = new LinkedList();
-                        que.addAll(world.theChunkProviderServer.loadedChunks);
-
-                        //Loop until we run out of stuff
-                        while (!que.isEmpty() && shouldRun)
-                        {
-                            //Get next chunk
-                            Chunk chunk = que.poll();
-                            if (chunk != null)
+                            //Ensure we have not scanned it yet
+                            ChunkCoordIntPair pair = chunk.getChunkCoordIntPair();
+                            if (!lastScanned.containsKey(pair) || (System.currentTimeMillis() - lastScanned.get(pair)) >= settings.timeToWaitBeforeScanningAChunkAgain)
                             {
-                                //Ensure we have not scanned it yet
-                                ChunkCoordIntPair pair = chunk.getChunkCoordIntPair();
-                                if (!lastScanned.containsKey(pair) || (System.currentTimeMillis() - lastScanned.get(pair)) >= SCAN_DELAY)
-                                {
-                                    //Mark as scanned
-                                    lastScanned.put(pair, System.currentTimeMillis());
+                                //Mark as scanned
+                                lastScanned.put(pair, System.currentTimeMillis());
 
-                                    //Handle
-                                    handleChunk(settings, world, chunk);
-                                }
+                                //Handle
+                                handleChunk(settings, world, chunk);
+
+                                //Keep track of chunks scanned
+                                chunksScanned++;
+                            }
+
+                            //Sleep if we have scanned enough chunks (helps free up CPU on busy servers)
+                            if (chunksScanned > settings.chunksToScanPerRun && settings.timeToDelayBetweenChunkScans > 0)
+                            {
+                                sleep(settings.timeToDelayBetweenChunkScans);
                             }
                         }
-
-                        //Keep track of the last time we scanned
-                        lastScanTimes.put(currentScanningWorld, lastScanned);
                     }
+
+                    //Keep track of the last time we scanned
+                    lastScanTimes.put(currentScanningWorld, lastScanned);
+                    lastWorldScanTimes.put(currentScanningWorld, System.currentTimeMillis());
                 }
+
+                //Move to next world
                 nextWorld();
-                sleep(1000);
+
+                //If current world is the same as last, delay until next scan time
+                if (currentScanWorld == world() && settings != null && settings.timeToDelayBetweenWorldScan > 0)
+                {
+                    sleep(settings.timeToDelayBetweenWorldScan);
+                }
             }
             catch (Exception e)
             {
@@ -108,7 +124,7 @@ public class BoxSpawnerThread extends Thread
                     //try 3 times to find a usable block
                     out:
                     // exit point for loop
-                    for (int c = 0; c < 3; c++)
+                    for (int c = 0; c < settings.triesPerChunk; c++)
                     {
                         //random position inside chunk
                         int x = world.rand.nextInt(16);
@@ -116,7 +132,7 @@ public class BoxSpawnerThread extends Thread
                         int y = world.rand.nextInt(chunk.getHeightValue(x, z));
 
                         //Allow a few up and down positions
-                        for (int yz = y - 5; yz < (5 + y); yz++)
+                        for (int yz = y - settings.upDownHeighAdjust; yz < (settings.upDownHeighAdjust + y); yz++)
                         {
                             //Offset by
                             int xz = chunk.xPosition * 16;
