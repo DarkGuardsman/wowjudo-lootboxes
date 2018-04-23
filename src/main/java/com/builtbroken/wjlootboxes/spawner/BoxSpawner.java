@@ -41,7 +41,7 @@ public class BoxSpawner
             try
             {
                 int id = Integer.parseInt(s);
-                if (worldToSpawnHandler.containsKey(id))
+                if (!worldToSpawnHandler.containsKey(id))
                 {
                     worldToSpawnHandler.put(id, null);
                 }
