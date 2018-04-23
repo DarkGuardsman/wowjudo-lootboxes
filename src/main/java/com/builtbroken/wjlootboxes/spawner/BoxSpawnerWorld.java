@@ -26,14 +26,36 @@ import java.util.concurrent.TimeUnit;
  */
 public class BoxSpawnerWorld
 {
+    //---------------------------------------------------------------------------
+    //--------Constants
+    //---------------------------------------------------------------------------
+    //JSON data for file
+    public static final String JSON_DELAY_BETWEEN_SCANS = "delay_between_scans";
+    public static final String JSON_DELAY_BETWEEN_CHUNK_SCANS = "delay_between_chunk_scans";
+    public static final String JSON_DELAY_TO_RESCAN_CHUNK = "delay_to_rescan_chunk";
+    public static final String JSON_CHUNKS_TO_SCAN = "chunks_to_scan";
+    public static final String JSON_BOXES_PER_CHUNK = "boxes_per_chunk";
+    public static final String JSON_TRIES_PER_CHUNK = "tries_per_chunk";
+    public static final String JSON_HEIGHT_ADJUST = "height_adjust";
+    public static final String JSON_CHANCES = "chances";
+    public static final String JSON_BLOCKS = "blocks";
+
+    //Json data for chance object
+    public static final String JSON_CHANCE_TIER = "tier";
+    public static final String JSON_CHANCE_VALUE = "chance";
+
+    //Json data for block object
+    public static final String JSON_BLOCK_ID = "id";
+    public static final String JSON_BLOCK_META = "meta";
+
+    //---------------------------------------------------------------------------
+    //----- Settings
+    //---------------------------------------------------------------------------
     /** Dimension of the world to access */
     public final int dimension;
 
     /** Block to meta data, used to check if blocks are supported for placing crates on */
     public final HashMap<Block, List<Integer>> supportedBlocks = new HashMap();
-
-    /** Thread safe queue of blocks to place */
-    public final ConcurrentLinkedQueue<BoxSpawnerPlacement> placementQueue = new ConcurrentLinkedQueue();
 
     /** How long to wait before scanning a chunk again */
     public long timeToWaitBeforeScanningAChunkAgain = TimeUnit.MINUTES.toMillis(10); //10 mins
@@ -52,9 +74,14 @@ public class BoxSpawnerWorld
     public int triesPerChunk = 3;
 
     /** Max up and down y to move to find a free spot */
-    public int upDownHeighAdjust = 5;
+    public int placementCheckHeightAdjust = 5;
 
     public float[] chancePerTier = new float[]{0.3f, 0.2f, 0.1f, 0.05f, 0.01f};
+
+    //---------------------------------------------------------------------------
+
+    /** Thread safe queue of blocks to place */
+    public final ConcurrentLinkedQueue<BoxSpawnerPlacement> placementQueue = new ConcurrentLinkedQueue();
 
 
     public BoxSpawnerWorld(int dim)
@@ -148,30 +175,62 @@ public class BoxSpawnerWorld
         }
     }
 
-    //JSON data for file
-    public static final String JSON_DELAY_BETWEEN_SCANS = "delay_between_scans";
-    public static final String JSON_DELAY_BETWEEN_CHUNK_SCANS = "delay_between_chunk_scans";
-    public static final String JSON_DELAY_TO_RESCAN_CHUNK = "delay_to_rescan_chunk";
-    public static final String JSON_CHUNKS_TO_SCAN = "chunks_to_scan";
-    public static final String JSON_BOXES_PER_CHUNK = "boxes_per_chunk";
-    public static final String JSON_TRIES_PER_CHUNK = "tries_per_chunk";
-    public static final String JSON_HEIGHT_ADJUST = "height_adjust";
-    public static final String JSON_CHANCES = "chances";
-    public static final String JSON_BLOCKS = "blocks";
-
-    //Json data for chance object
-    public static final String JSON_CHANCE_TIER = "tier";
-    public static final String JSON_CHANCE_VALUE = "chance";
-
-    //Json data for block object
-    public static final String JSON_BLOCK_ID = "id";
-    public static final String JSON_BLOCK_META = "meta";
-
     protected void loadData(JsonElement element)
     {
         if (element.isJsonObject())
         {
             final JsonObject jsonData = element.getAsJsonObject();
+            timeToDelayBetweenWorldScan = jsonData.get(JSON_DELAY_BETWEEN_SCANS).getAsLong();
+            timeToDelayBetweenChunkScans = jsonData.get(JSON_DELAY_BETWEEN_CHUNK_SCANS).getAsLong();
+            timeToWaitBeforeScanningAChunkAgain = jsonData.get(JSON_DELAY_TO_RESCAN_CHUNK).getAsLong();
+
+            chunksToScanPerRun = jsonData.get(JSON_CHUNKS_TO_SCAN).getAsInt();
+            boxesPerChunk = jsonData.get(JSON_BOXES_PER_CHUNK).getAsInt();
+            triesPerChunk = jsonData.get(JSON_TRIES_PER_CHUNK).getAsInt();
+            placementCheckHeightAdjust = jsonData.get(JSON_HEIGHT_ADJUST).getAsInt();
+
+            JsonArray chanceArray = jsonData.getAsJsonArray(JSON_CHANCES);
+            for (JsonElement entry : chanceArray)
+            {
+                if (entry.isJsonObject())
+                {
+                    JsonObject chanceData = entry.getAsJsonObject();
+                    int tier = chanceData.get(JSON_CHANCE_TIER).getAsInt();
+                    float value = chanceData.get(JSON_CHANCE_VALUE).getAsFloat();
+
+                    if (tier >= 0 && tier < WJLootBoxes.NUMBER_OF_TIERS && tier < this.chancePerTier.length)
+                    {
+                        this.chancePerTier[tier] = value;
+                    }
+                }
+            }
+
+            supportedBlocks.clear();
+            JsonArray blockArray = jsonData.getAsJsonArray(JSON_BLOCKS);
+            for (JsonElement entry : blockArray)
+            {
+                if (entry.isJsonObject())
+                {
+                    JsonObject blockObject = entry.getAsJsonObject();
+                    String id = blockObject.getAsJsonPrimitive(JSON_BLOCK_ID).getAsString();
+                    Block block = Block.getBlockFromName(id);
+                    if (block != null)
+                    {
+                        if (!supportedBlocks.containsKey(block))
+                        {
+                            supportedBlocks.put(block, new ArrayList());
+                        }
+                        if (blockObject.has(JSON_BLOCK_META))
+                        {
+                            supportedBlocks.get(block).add(blockObject.get(JSON_BLOCK_META).getAsInt());
+                        }
+                    }
+                    else
+                    {
+                        WJLootBoxes.LOGGER.error("BoxSpawnerWorld#loadData() - Failed to locate block '" + id + "' while load data for dimension '" + dimension + "'");
+                    }
+                }
+            }
         }
     }
 
@@ -183,7 +242,7 @@ public class BoxSpawnerWorld
         object.add(JSON_CHUNKS_TO_SCAN, new JsonPrimitive(chunksToScanPerRun));
         object.add(JSON_BOXES_PER_CHUNK, new JsonPrimitive(boxesPerChunk));
         object.add(JSON_TRIES_PER_CHUNK, new JsonPrimitive(triesPerChunk));
-        object.add(JSON_HEIGHT_ADJUST, new JsonPrimitive(upDownHeighAdjust));
+        object.add(JSON_HEIGHT_ADJUST, new JsonPrimitive(placementCheckHeightAdjust));
 
         //Load chance array
         JsonArray chanceArray = new JsonArray();

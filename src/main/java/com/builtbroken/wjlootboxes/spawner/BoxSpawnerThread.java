@@ -132,7 +132,7 @@ public class BoxSpawnerThread extends Thread
                         int y = world.rand.nextInt(chunk.getHeightValue(x, z));
 
                         //Allow a few up and down positions
-                        for (int yz = y - settings.upDownHeighAdjust; yz < (settings.upDownHeighAdjust + y); yz++)
+                        for (int yz = y - settings.placementCheckHeightAdjust; yz < (settings.placementCheckHeightAdjust + y); yz++)
                         {
                             //Offset by
                             int xz = chunk.xPosition * 16;
