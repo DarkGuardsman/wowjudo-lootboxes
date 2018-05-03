@@ -14,6 +14,7 @@ import net.minecraft.util.IIcon;
 import net.minecraft.world.World;
 
 import java.util.List;
+import java.util.Random;
 
 /**
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
@@ -29,6 +30,14 @@ public class BlockLootbox extends Block
         super(Material.wood);
         setBlockName(WJLootBoxes.PREFIX + "box");
         setCreativeTab(CreativeTabs.tabBlock);
+        setHardness(1);
+        setResistance(1);
+    }
+
+    @Override
+    public int quantityDropped(Random p_149745_1_)
+    {
+        return 0;
     }
 
     @Override
