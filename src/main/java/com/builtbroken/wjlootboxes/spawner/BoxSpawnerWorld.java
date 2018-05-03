@@ -39,6 +39,7 @@ public class BoxSpawnerWorld
     public static final String JSON_HEIGHT_ADJUST = "height_adjust";
     public static final String JSON_CHANCES = "chances";
     public static final String JSON_BLOCKS = "blocks";
+    public static final String JSON_AREAS = "areas";
 
     //Json data for chance object
     public static final String JSON_CHANCE_TIER = "tier";
@@ -47,6 +48,12 @@ public class BoxSpawnerWorld
     //Json data for block object
     public static final String JSON_BLOCK_ID = "id";
     public static final String JSON_BLOCK_META = "meta";
+
+    //Json data for spawn areas
+    public static final String JSON_START_X = "chunk_start_x";
+    public static final String JSON_START_Z = "chunk_start_z";
+    public static final String JSON_END_X = "chunk_end_x";
+    public static final String JSON_END_Z = "chunk_end_z";
 
     //---------------------------------------------------------------------------
     //----- Settings
@@ -78,6 +85,8 @@ public class BoxSpawnerWorld
 
     public float[] chancePerTier = new float[]{0.3f, 0.2f, 0.1f, 0.05f, 0.01f};
 
+    public List<BoxSpawnArea> allowedSpawnAreas = new ArrayList();
+
     //---------------------------------------------------------------------------
 
     /** Thread safe queue of blocks to place */
@@ -89,6 +98,7 @@ public class BoxSpawnerWorld
         this.dimension = dim;
         supportedBlocks.put(Blocks.grass, new ArrayList());
         supportedBlocks.put(Blocks.dirt, new ArrayList());
+        allowedSpawnAreas.add(new BoxSpawnArea(-100, -100, 100, 100));
     }
 
     /**
@@ -125,8 +135,9 @@ public class BoxSpawnerWorld
     public boolean canSpawnHere(int x, int y, int z)
     {
         World world = world();
-        if (world != null)
+        if (world != null && canSpawnInArea(x, z))
         {
+            //Check block
             Block block = world.getBlock(x, y, z);
             if (block != null && (block.isAir(world, x, y, z) || block.isReplaceable(world, x, y, z)))
             {
@@ -135,6 +146,26 @@ public class BoxSpawnerWorld
         }
         return false;
     }
+
+    protected boolean canSpawnInArea(int x, int z)
+    {
+        //Check chunk
+        if (!allowedSpawnAreas.isEmpty())
+        {
+            int chunkX = x >> 4;
+            int chunkZ = z >> 4;
+            for (BoxSpawnArea area : allowedSpawnAreas)
+            {
+                if (area.isInside(chunkX, chunkZ))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return true;
+    }
+
 
     public boolean isSupportedBlock(Block block)
     {
@@ -231,6 +262,23 @@ public class BoxSpawnerWorld
                     }
                 }
             }
+
+            if (jsonData.has(JSON_AREAS))
+            {
+                JsonArray areaArray = jsonData.getAsJsonArray(JSON_AREAS);
+                for (JsonElement entry : areaArray)
+                {
+                    if (entry.isJsonObject())
+                    {
+                        JsonObject areaObject = entry.getAsJsonObject();
+                        int startX = areaObject.get(JSON_START_X).getAsInt();
+                        int startZ = areaObject.get(JSON_START_Z).getAsInt();
+                        int endX = areaObject.get(JSON_END_X).getAsInt();
+                        int endZ = areaObject.get(JSON_END_Z).getAsInt();
+                        allowedSpawnAreas.add(new BoxSpawnArea(startX, startZ, endX, endZ));
+                    }
+                }
+            }
         }
     }
 
@@ -282,6 +330,18 @@ public class BoxSpawnerWorld
             }
         }
         object.add(JSON_BLOCKS, blockArray);
+
+        //Load block array
+        JsonArray areaArray = new JsonArray();
+        for (BoxSpawnArea area : allowedSpawnAreas)
+        {
+            JsonObject areaObject = new JsonObject();
+            areaObject.add(JSON_START_X, new JsonPrimitive(area.startX));
+            areaObject.add(JSON_START_Z, new JsonPrimitive(area.startZ));
+            areaObject.add(JSON_END_X, new JsonPrimitive(area.endX));
+            areaObject.add(JSON_END_Z, new JsonPrimitive(area.endZ));
+            areaArray.add(areaObject);
+        }
     }
 
     /**
