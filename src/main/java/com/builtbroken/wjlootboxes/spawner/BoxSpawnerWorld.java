@@ -265,6 +265,7 @@ public class BoxSpawnerWorld
 
             if (jsonData.has(JSON_AREAS))
             {
+                allowedSpawnAreas.clear();
                 JsonArray areaArray = jsonData.getAsJsonArray(JSON_AREAS);
                 for (JsonElement entry : areaArray)
                 {
@@ -342,6 +343,7 @@ public class BoxSpawnerWorld
             areaObject.add(JSON_END_Z, new JsonPrimitive(area.endZ));
             areaArray.add(areaObject);
         }
+        object.add(JSON_AREAS, areaArray);
     }
 
     /**
