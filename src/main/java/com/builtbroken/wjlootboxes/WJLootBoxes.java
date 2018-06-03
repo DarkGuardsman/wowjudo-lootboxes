@@ -3,6 +3,7 @@ package com.builtbroken.wjlootboxes;
 import com.builtbroken.wjlootboxes.box.BlockLootbox;
 import com.builtbroken.wjlootboxes.box.ItemBlockLootbox;
 import com.builtbroken.wjlootboxes.box.TileEntityLootbox;
+import com.builtbroken.wjlootboxes.command.CommandLootbox;
 import com.builtbroken.wjlootboxes.loot.LootHandler;
 import com.builtbroken.wjlootboxes.spawner.BoxSpawner;
 import com.builtbroken.wjlootboxes.spawner.BoxSpawnerThread;
@@ -13,6 +14,8 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppingEvent;
 import cpw.mods.fml.common.registry.GameRegistry;
+import net.minecraft.command.ICommandManager;
+import net.minecraft.command.ServerCommandManager;
 import net.minecraftforge.common.config.Configuration;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -73,6 +76,12 @@ public class WJLootBoxes
     @Mod.EventHandler
     public void onServerStart(FMLServerStartingEvent event)
     {
+        // Setup command
+        ICommandManager commandManager = FMLCommonHandler.instance().getMinecraftServerInstance().getCommandManager();
+        ServerCommandManager serverCommandManager = ((ServerCommandManager) commandManager);
+        serverCommandManager.registerCommand(new CommandLootbox());
+
+        //Start thread
         thread = new BoxSpawnerThread();
         thread.startScanner();
     }
