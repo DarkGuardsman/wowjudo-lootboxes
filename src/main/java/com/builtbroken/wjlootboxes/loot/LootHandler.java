@@ -385,30 +385,10 @@ public class LootHandler
         {
             for (LootEntry lootEntry : loot[tier])
             {
-                if (lootEntry != null)
+                JsonElement element = saveLootEntry(lootEntry);
+                if (element != null)
                 {
-                    JsonObject lootData = new JsonObject();
-                    if (lootEntry.oreName != null)
-                    {
-                        lootData.add(JSON_ITEM_ID, new JsonPrimitive("ore@" + lootEntry.oreName));
-                        lootData.add(JSON_ITEM_META, new JsonPrimitive(0));
-                    }
-                    else
-                    {
-                        lootData.add(JSON_ITEM_ID, new JsonPrimitive(Item.itemRegistry.getNameForObject(lootEntry.stack.getItem())));
-                        lootData.add(JSON_ITEM_META, new JsonPrimitive(lootEntry.stack.getItemDamage()));
-
-                        if (lootEntry.stack.getTagCompound() != null && !lootEntry.stack.getTagCompound().hasNoTags())
-                        {
-                            lootData.add(JSON_ITEM_NBT, JsonConverterNBT.toJson(lootEntry.stack.getTagCompound()));
-                        }
-                    }
-
-                    lootData.add(JSON_ITEM_MIN_COUNT, new JsonPrimitive(lootEntry.minCount));
-                    lootData.add(JSON_ITEM_MAX_COUNT, new JsonPrimitive(lootEntry.maxCount));
-                    lootData.add(JSON_ITEM_CHANCE, new JsonPrimitive(lootEntry.chanceToDrop));
-
-                    array.add(lootData);
+                    array.add(element);
                 }
             }
         }
@@ -428,6 +408,37 @@ public class LootHandler
             fileWriter.write(gson.toJson(object));
         }
     }
+
+    public static JsonElement saveLootEntry(LootEntry lootEntry)
+    {
+        if (lootEntry != null)
+        {
+            JsonObject lootData = new JsonObject();
+            if (lootEntry.oreName != null)
+            {
+                lootData.add(JSON_ITEM_ID, new JsonPrimitive("ore@" + lootEntry.oreName));
+                lootData.add(JSON_ITEM_META, new JsonPrimitive(0));
+            }
+            else
+            {
+                lootData.add(JSON_ITEM_ID, new JsonPrimitive(Item.itemRegistry.getNameForObject(lootEntry.stack.getItem())));
+                lootData.add(JSON_ITEM_META, new JsonPrimitive(lootEntry.stack.getItemDamage()));
+
+                if (lootEntry.stack.getTagCompound() != null && !lootEntry.stack.getTagCompound().hasNoTags())
+                {
+                    lootData.add(JSON_ITEM_NBT, JsonConverterNBT.toJson(lootEntry.stack.getTagCompound()));
+                }
+            }
+
+            lootData.add(JSON_ITEM_MIN_COUNT, new JsonPrimitive(lootEntry.minCount));
+            lootData.add(JSON_ITEM_MAX_COUNT, new JsonPrimitive(lootEntry.maxCount));
+            lootData.add(JSON_ITEM_CHANCE, new JsonPrimitive(lootEntry.chanceToDrop));
+
+            return lootData;
+        }
+        return null;
+    }
+
 
     protected File getFileForTier(int tier)
     {

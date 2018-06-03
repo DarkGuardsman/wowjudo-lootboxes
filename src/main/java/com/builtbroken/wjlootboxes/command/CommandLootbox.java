@@ -1,5 +1,11 @@
 package com.builtbroken.wjlootboxes.command;
 
+import com.builtbroken.wjlootboxes.WJLootBoxes;
+import com.builtbroken.wjlootboxes.loot.LootEntry;
+import com.builtbroken.wjlootboxes.loot.LootHandler;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
@@ -8,6 +14,9 @@ import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.oredict.OreDictionary;
+
+import java.io.File;
+import java.io.FileWriter;
 
 /**
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
@@ -63,6 +72,34 @@ public class CommandLootbox extends CommandBase
             else
             {
                 throw new CommandException("That command can only be run from a player");
+            }
+        }
+        else if (args[0].equalsIgnoreCase("saveHeld"))
+        {
+            ItemStack stack = ((EntityPlayer) sender).getHeldItem();
+            if (stack != null)
+            {
+                JsonElement element = LootHandler.saveLootEntry(new LootEntry(stack));
+
+                File file = new File(WJLootBoxes.configFolder, "/items/" + stack.getUnlocalizedName() + "-" + System.currentTimeMillis() + ".json");
+                if (!file.getParentFile().exists())
+                {
+                    file.getParentFile().mkdirs();
+                }
+
+                //Write file to disk
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                try (FileWriter fileWriter = new FileWriter(file))
+                {
+                    fileWriter.write(gson.toJson(element));
+                    ((EntityPlayer) sender).addChatComponentMessage(new ChatComponentText("Item data saved as JSON >> " + file.getAbsolutePath()));
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                    ((EntityPlayer) sender).addChatComponentMessage(new ChatComponentText("Unexpected error saving file: '" + e.getMessage() + "'"));
+                    ((EntityPlayer) sender).addChatComponentMessage(new ChatComponentText("See console for more details"));
+                }
             }
         }
     }
