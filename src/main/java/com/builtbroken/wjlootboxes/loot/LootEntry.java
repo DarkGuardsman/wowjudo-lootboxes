@@ -24,6 +24,8 @@ public class LootEntry
     /** Chance of dropping the item */
     public float chanceToDrop;
 
+    public String originalData;
+
     public LootEntry(ItemStack stack)
     {
         this.stack = stack;
@@ -66,6 +68,15 @@ public class LootEntry
                 }
             }
         }
-        return stack;
+        if (stack != null)
+        {
+            return stack.copy();
+        }
+        return null;
+    }
+
+    public String toString()
+    {
+        return "LootEntry[" + originalData + ", " + minCount + "-" + maxCount + ", " + chanceToDrop + "]@" + hashCode();
     }
 }

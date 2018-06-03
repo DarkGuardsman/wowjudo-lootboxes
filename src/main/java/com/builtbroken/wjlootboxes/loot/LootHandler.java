@@ -5,6 +5,8 @@ import com.google.gson.*;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import net.minecraft.block.Block;
+import net.minecraft.enchantment.Enchantment;
+import net.minecraft.enchantment.EnchantmentData;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
@@ -31,6 +33,7 @@ public class LootHandler
 
     public static final String JSON_ITEM_ID = "item";
     public static final String JSON_ITEM_META = "data";
+    public static final String JSON_ITEM_NBT = "nbt";
     public static final String JSON_ITEM_MIN_COUNT = "min_count";
     public static final String JSON_ITEM_MAX_COUNT = "max_count";
     public static final String JSON_ITEM_CHANCE = "chance";
@@ -95,7 +98,7 @@ public class LootHandler
                 for (int r = 0; r < 6; r++)
                 {
                     //Get random entry to allow a chance for all entries to be used
-                    LootEntry lootEntry = possibleItems[world.rand.nextInt(possibleItems.length - 1)];
+                    LootEntry lootEntry = possibleItems.length > 1 ? possibleItems[world.rand.nextInt(possibleItems.length - 1)] : possibleItems[0];
 
                     //Null check, loaded data can result in nulls in rare cases
                     if (lootEntry != null)
@@ -119,11 +122,8 @@ public class LootHandler
                 ItemStack stack = lootEntry.getStack();
 
                 //Can return null for ore dictionary look up
-                if (stack != null)
+                if (stack != null && stack.getItem() != null)
                 {
-                    //Copy stack to prevent issues
-                    stack = stack.copy();
-
                     //Randomize stack size
                     stack.stackSize = lootEntry.minCount;
                     if (lootEntry.minCount < lootEntry.maxCount)
@@ -156,6 +156,10 @@ public class LootHandler
                         //Spawn entity
                         world.spawnEntityInWorld(item);
                     }
+                }
+                else
+                {
+                    WJLootBoxes.LOGGER.error("Received invalid stack from " + lootEntry);
                 }
             }
         }
@@ -288,7 +292,7 @@ public class LootHandler
 
                         //Load data
                         String itemName = lootData.get(JSON_ITEM_ID).getAsString();
-                        int data = lootData.get(JSON_ITEM_META).getAsInt();
+
                         int min = lootData.get(JSON_ITEM_MIN_COUNT).getAsInt();
                         int max = lootData.get(JSON_ITEM_MAX_COUNT).getAsInt();
                         float chance = lootData.get(JSON_ITEM_CHANCE).getAsFloat();
@@ -298,20 +302,37 @@ public class LootHandler
                         if (itemName.startsWith("ore@"))
                         {
                             lootEntry = new LootEntry(itemName.substring(4, itemName.length()));
+
+                            //Debug data
+                            lootEntry.originalData = itemName;
                         }
                         else
                         {
+                            int itemDamage = lootData.get(JSON_ITEM_META).getAsInt();
                             Item item = (Item) Item.itemRegistry.getObject(itemName);
+
                             if (item != null)
                             {
-                                lootEntry = new LootEntry(new ItemStack(item, 1, data));
+                                lootEntry = new LootEntry(new ItemStack(item, 1, itemDamage));
                             }
                             else
                             {
                                 Block block = (Block) Block.blockRegistry.getObject(itemName);
                                 if (block != null)
                                 {
-                                    lootEntry = new LootEntry(new ItemStack(block, 1, data));
+                                    lootEntry = new LootEntry(new ItemStack(block, 1, itemDamage));
+                                }
+                            }
+
+                            if (lootEntry != null)
+                            {
+                                //Debug data
+                                lootEntry.originalData = itemName + "@" + itemDamage;
+
+                                //Load NBT data
+                                if (lootData.has(JSON_ITEM_NBT))
+                                {
+                                    lootEntry.stack.setTagCompound(JsonConverterNBT.handle(lootData.get(JSON_ITEM_NBT)));
                                 }
                             }
                         }
@@ -376,6 +397,11 @@ public class LootHandler
                     {
                         lootData.add(JSON_ITEM_ID, new JsonPrimitive(Item.itemRegistry.getNameForObject(lootEntry.stack.getItem())));
                         lootData.add(JSON_ITEM_META, new JsonPrimitive(lootEntry.stack.getItemDamage()));
+
+                        if (lootEntry.stack.getTagCompound() != null && !lootEntry.stack.getTagCompound().hasNoTags())
+                        {
+                            lootData.add(JSON_ITEM_NBT, JsonConverterNBT.toJson(lootEntry.stack.getTagCompound()));
+                        }
                     }
 
                     lootData.add(JSON_ITEM_MIN_COUNT, new JsonPrimitive(lootEntry.minCount));
@@ -444,12 +470,20 @@ public class LootHandler
         minLootCount[3] = 3;
         maxLootCount[3] = 7;
         allowDuplicateDrops[3] = true;
-        loot[3] = new LootEntry[5];
-        loot[3][0] = new LootEntry(new ItemStack(Items.stick), 5, 100, 1);
-        loot[3][1] = new LootEntry(new ItemStack(Items.leather_boots), 1, 1, 0.1f);
-        loot[3][2] = new LootEntry(new ItemStack(Items.carrot), 5, 10, 0.5f);
-        loot[3][3] = new LootEntry(new ItemStack(Items.stone_axe), 1, 2, 0.3f);
-        loot[3][4] = new LootEntry(new ItemStack(Items.gold_ingot), 3, 10, 0.1f);
+        Enchantment[] aenchantment = Enchantment.enchantmentsList;
+        ArrayList<ItemStack> books = new ArrayList();
+        for (Enchantment enchantment : aenchantment)
+        {
+            if (enchantment != null && enchantment.type != null)
+            {
+                for (int i = enchantment.getMinLevel(); i <= enchantment.getMaxLevel(); ++i)
+                {
+                    books.add(Items.enchanted_book.getEnchantedItemStack(new EnchantmentData(enchantment, i)));
+                }
+            }
+        }
+
+        loot[3] = books.stream().map(b -> new LootEntry(b, 1, 3, 0.1f)).toArray(LootEntry[]::new);
 
         minLootCount[4] = 4;
         maxLootCount[4] = 10;
