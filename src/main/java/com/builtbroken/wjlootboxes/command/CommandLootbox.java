@@ -81,7 +81,7 @@ public class CommandLootbox extends CommandBase
             {
                 JsonElement element = LootHandler.saveLootEntry(new LootEntry(stack));
 
-                File file = new File(WJLootBoxes.configFolder, "/items/" + stack.getUnlocalizedName() + "-" + System.currentTimeMillis() + ".json");
+                File file = new File(WJLootBoxes.configFolder, "/items/" + stack.getUnlocalizedName().replace(":", "-").replace("/", "-") + "-" + System.currentTimeMillis() + ".json");
                 if (!file.getParentFile().exists())
                 {
                     file.getParentFile().mkdirs();
