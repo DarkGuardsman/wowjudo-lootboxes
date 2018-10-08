@@ -1,6 +1,7 @@
-package com.builtbroken.wjlootboxes.loot.entry;
+package com.builtbroken.wjlootboxes.loot.entry.stack;
 
 import com.builtbroken.wjlootboxes.WJLootBoxes;
+import com.builtbroken.wjlootboxes.loot.entry.LootEntry;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;

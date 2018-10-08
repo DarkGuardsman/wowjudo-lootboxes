@@ -1,7 +1,7 @@
 package com.builtbroken.wjlootboxes.command;
 
 import com.builtbroken.wjlootboxes.WJLootBoxes;
-import com.builtbroken.wjlootboxes.loot.entry.LootEntryItemStack;
+import com.builtbroken.wjlootboxes.loot.entry.stack.LootEntryItemStack;
 import com.builtbroken.wjlootboxes.loot.LootHandler;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

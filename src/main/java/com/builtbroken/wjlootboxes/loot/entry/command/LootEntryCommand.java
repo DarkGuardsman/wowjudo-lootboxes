@@ -1,6 +1,7 @@
-package com.builtbroken.wjlootboxes.loot.entry;
+package com.builtbroken.wjlootboxes.loot.entry.command;
 
 import com.builtbroken.wjlootboxes.loot.LootHandler;
+import com.builtbroken.wjlootboxes.loot.entry.ILootEntry;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.entity.player.EntityPlayer;

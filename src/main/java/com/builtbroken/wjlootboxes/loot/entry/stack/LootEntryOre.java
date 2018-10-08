@@ -1,4 +1,4 @@
-package com.builtbroken.wjlootboxes.loot.entry;
+package com.builtbroken.wjlootboxes.loot.entry.stack;
 
 import com.builtbroken.wjlootboxes.loot.LootHandler;
 import com.google.gson.JsonObject;
