@@ -127,8 +127,8 @@ public class BoxSpawnerThread extends Thread
                     for (int c = 0; c < settings.triesPerChunk; c++)
                     {
                         //random position inside chunk
-                        int x = world.rand.nextInt(16);
-                        int z = world.rand.nextInt(16);
+                        int x = 8 - world.rand.nextInt(8) + world.rand.nextInt(7);
+                        int z = 8 - world.rand.nextInt(8) + world.rand.nextInt(7);
                         int y = world.rand.nextInt(chunk.getHeightValue(x, z));
 
                         //Allow a few up and down positions
