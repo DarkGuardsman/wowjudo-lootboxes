@@ -1,22 +1,32 @@
 package com.builtbroken.wjlootboxes.command;
 
 import com.builtbroken.wjlootboxes.WJLootBoxes;
-import com.builtbroken.wjlootboxes.loot.entry.stack.LootEntryItemStack;
 import com.builtbroken.wjlootboxes.loot.LootHandler;
+import com.builtbroken.wjlootboxes.loot.entry.stack.LootEntryItemStack;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.command.WrongUsageException;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.JsonToNBT;
+import net.minecraft.nbt.NBTBase;
+import net.minecraft.nbt.NBTException;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraftforge.oredict.OreDictionary;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @see <a href="https://github.com/BuiltBrokenModding/VoltzEngine/blob/development/license.md">License</a> for what you can and can't do with the code.
@@ -24,6 +34,14 @@ import java.io.FileWriter;
  */
 public class CommandLootbox extends CommandBase
 {
+    private static final String COMMAND_GIVE = "give";
+    private static final String COMMAND_LOOT = "loot";
+    private static final String COMMAND_ITEM = "heldItem";
+    private static final String COMMAND_SAVE = "saveHand";
+    private static final String COMMAND_HELP = "help";
+
+    private static final String[] COMMANDS = new String[]{COMMAND_GIVE, COMMAND_LOOT, COMMAND_ITEM, COMMAND_SAVE, COMMAND_HELP};
+
     @Override
     public String getCommandName()
     {
@@ -39,14 +57,18 @@ public class CommandLootbox extends CommandBase
     @Override
     public void processCommand(ICommandSender sender, String[] args)
     {
-        if (args == null || args.length == 0 || args[0].equals("?") || args[0].equalsIgnoreCase("help"))
+        if (args == null || args.length == 0 || args[0].equals("?") || args[0].equalsIgnoreCase(COMMAND_HELP))
         {
-            //TODO print help
+            sender.addChatMessage(new ChatComponentText(getCommandUsage(sender) + " give    - works the same as the vanilla give command"));
             sender.addChatMessage(new ChatComponentText(getCommandUsage(sender) + " heldItem    - prints data about the item held"));
             sender.addChatMessage(new ChatComponentText(getCommandUsage(sender) + " saveHeld    - saves held item data held to a file for use"));
             sender.addChatMessage(new ChatComponentText(getCommandUsage(sender) + " loot <player> <tier>    - spawns random loot for the given tier of lootbox"));
         }
-        else if (args[0].equalsIgnoreCase("loot"))
+        else if (args[0].equalsIgnoreCase(COMMAND_GIVE))
+        {
+            processGive(sender, Arrays.copyOfRange(args, 1, args.length));
+        }
+        else if (args[0].equalsIgnoreCase(COMMAND_LOOT))
         {
             if (args.length >= 3)
             {
@@ -59,7 +81,7 @@ public class CommandLootbox extends CommandBase
                 throw new CommandException("command.wjlootboxes:error.args.missing");
             }
         }
-        else if (args[0].equalsIgnoreCase("heldItem"))
+        else if (args[0].equalsIgnoreCase(COMMAND_ITEM))
         {
             if (sender instanceof EntityPlayer)
             {
@@ -90,7 +112,7 @@ public class CommandLootbox extends CommandBase
                 throw new CommandException("command.wjlootboxes:error.player.needed");
             }
         }
-        else if (args[0].equalsIgnoreCase("saveHeld"))
+        else if (args[0].equalsIgnoreCase(COMMAND_SAVE))
         {
             ItemStack stack = ((EntityPlayer) sender).getHeldItem();
             if (stack != null)
@@ -118,5 +140,93 @@ public class CommandLootbox extends CommandBase
                 }
             }
         }
+    }
+
+    public void processGive(ICommandSender sender, String[] args)
+    {
+        if (args.length < 2)
+        {
+            throw new WrongUsageException("commands.give.usage", new Object[0]);
+        }
+        else
+        {
+            EntityPlayerMP entityplayermp = getPlayer(sender, args[0]);
+            Item item = getItemByText(sender, args[1]);
+            int i = 1;
+            int j = 0;
+
+            if (args.length >= 3)
+            {
+                i = parseIntBounded(sender, args[2], 1, 64);
+            }
+
+            if (args.length >= 4)
+            {
+                j = parseInt(sender, args[3]);
+            }
+
+            ItemStack itemstack = new ItemStack(item, i, j);
+
+            if (args.length >= 5)
+            {
+                String s = func_147178_a(sender, args, 4).getUnformattedText();
+
+                try
+                {
+                    NBTBase nbtbase = JsonToNBT.func_150315_a(s);
+
+                    if (!(nbtbase instanceof NBTTagCompound))
+                    {
+                        func_152373_a(sender, this, "commands.give.tagError", new Object[]{"Not a valid tag"});
+                        return;
+                    }
+
+                    itemstack.setTagCompound((NBTTagCompound) nbtbase);
+                }
+                catch (NBTException nbtexception)
+                {
+                    func_152373_a(sender, this, "commands.give.tagError", new Object[]{nbtexception.getMessage()});
+                    return;
+                }
+            }
+
+            EntityItem entityitem = entityplayermp.dropPlayerItemWithRandomChoice(itemstack, false);
+            entityitem.delayBeforeCanPickup = 0;
+            entityitem.func_145797_a(entityplayermp.getCommandSenderName());
+            //func_152373_a(sender, this, "commands.give.success", new Object[]{itemstack.func_151000_E(), Integer.valueOf(i), entityplayermp.getCommandSenderName()});
+        }
+    }
+
+    @Override
+    public List addTabCompletionOptions(ICommandSender sender, String[] args)
+    {
+        if (args.length > 1)
+        {
+            if (args[0].equalsIgnoreCase(COMMAND_GIVE))
+            {
+                if (args.length == 2)
+                {
+                    return getListOfStringsMatchingLastWord(args, this.getPlayers());
+                }
+                else if (args.length == 3)
+                {
+                    return getListOfStringsFromIterableMatchingLastWord(args, Item.itemRegistry.getKeys());
+                }
+            }
+            else if (args[0].equalsIgnoreCase(COMMAND_LOOT))
+            {
+                return getListOfStringsMatchingLastWord(args, this.getPlayers());
+            }
+        }
+        else if (args.length == 1)
+        {
+            return getListOfStringsMatchingLastWord(args, COMMANDS);
+        }
+        return null;
+    }
+
+    protected String[] getPlayers()
+    {
+        return MinecraftServer.getServer().getAllUsernames();
     }
 }

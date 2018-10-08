@@ -1,6 +1,5 @@
 package com.builtbroken.wjlootboxes.command;
 
-import com.builtbroken.wjlootboxes.WJLootBoxes;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChunkCoordinates;
@@ -43,7 +42,7 @@ public class CommandSenderLootbox implements ICommandSender
     @Override
     public void addChatMessage(IChatComponent chat)
     {
-        WJLootBoxes.LOGGER.info(toString() + ": " + chat.getUnformattedTextForChat());
+        //WJLootBoxes.LOGGER.info(toString() + ": " + chat.getUnformattedTextForChat());
     }
 
     @Override

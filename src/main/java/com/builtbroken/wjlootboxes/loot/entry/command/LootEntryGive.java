@@ -71,7 +71,7 @@ public class LootEntryGive extends LootEntry
                 while (count > 0)
                 {
                     //Build command
-                    String command = "/give ";
+                    String command = "/wjlootbox give ";
                     if (player != null)
                     {
                         command += player.getCommandSenderName() + " ";
