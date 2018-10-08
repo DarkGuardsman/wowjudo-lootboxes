@@ -51,8 +51,9 @@ public class BoxSpawnerThread extends Thread
                     }
 
                     //Get list of chunks to scan
-                    Queue<Chunk> que = new LinkedList();
+                    LinkedList<Chunk> que = new LinkedList();
                     que.addAll(world.theChunkProviderServer.loadedChunks);
+                    Collections.shuffle(que);
 
                     int chunksScanned = 0;
                     //Loop until we run out of stuff
@@ -60,7 +61,7 @@ public class BoxSpawnerThread extends Thread
                     {
                         //Get next chunk
                         Chunk chunk = que.poll();
-                        if (chunk != null)
+                        if (chunk != null && world.rand.nextBoolean())
                         {
                             //Ensure we have not scanned it yet
                             ChunkCoordIntPair pair = chunk.getChunkCoordIntPair();
