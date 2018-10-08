@@ -1,7 +1,7 @@
 package com.builtbroken.wjlootboxes.command;
 
 import com.builtbroken.wjlootboxes.WJLootBoxes;
-import com.builtbroken.wjlootboxes.loot.LootEntry;
+import com.builtbroken.wjlootboxes.loot.entry.LootEntryItemStack;
 import com.builtbroken.wjlootboxes.loot.LootHandler;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -95,7 +95,7 @@ public class CommandLootbox extends CommandBase
             ItemStack stack = ((EntityPlayer) sender).getHeldItem();
             if (stack != null)
             {
-                JsonElement element = LootHandler.saveLootEntry(new LootEntry(stack));
+                JsonElement element = LootHandler.saveLootEntry(new LootEntryItemStack(stack, 0, 1, 1));
 
                 File file = new File(WJLootBoxes.configFolder, "/items/" + stack.getUnlocalizedName().replace(":", "-").replace("/", "-") + "-" + System.currentTimeMillis() + ".json");
                 if (!file.getParentFile().exists())
