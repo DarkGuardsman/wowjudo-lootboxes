@@ -135,8 +135,8 @@ public class BoxSpawnerThread extends Thread
                         for (int yz = y - settings.placementCheckHeightAdjust; yz < (settings.placementCheckHeightAdjust + y); yz++)
                         {
                             //Offset by
-                            int xz = chunk.xPosition * 16;
-                            int zz = chunk.zPosition * 16;
+                            int xz = chunk.xPosition * 16 + x;
+                            int zz = chunk.zPosition * 16 + z;
 
                             if (settings.canSpawnHere(xz, yz, zz))
                             {
