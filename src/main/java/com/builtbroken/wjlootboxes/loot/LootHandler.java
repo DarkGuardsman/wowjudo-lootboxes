@@ -291,7 +291,10 @@ public class LootHandler
             {
                 minLootCount[tier] = Math.max(1, tierJsonData.getAsJsonPrimitive(JSON_MIN_LOOT).getAsInt());
                 maxLootCount[tier] = Math.max(1, tierJsonData.getAsJsonPrimitive(JSON_MAX_LOOT).getAsInt());
-                commands[tier] = tierJsonData.getAsJsonPrimitive(JSON_COMMAND).getAsString();
+                if (tierJsonData.has(JSON_COMMAND))
+                {
+                    commands[tier] = tierJsonData.getAsJsonPrimitive(JSON_COMMAND).getAsString();
+                }
 
                 final JsonArray lootEntries = tierJsonData.getAsJsonArray(JSON_LOOT_ARRAY);
 
@@ -434,7 +437,7 @@ public class LootHandler
         loot[2].add(new LootEntryItemStack(new ItemStack(Items.leather_boots), 1, 1, 0.1f));
         loot[2].add(new LootEntryItemStack(new ItemStack(Blocks.bookshelf), 5, 10, 0.5f));
         loot[2].add(new LootEntryItemStack(new ItemStack(Items.iron_axe), 1, 2, 0.3f));
-        loot[2].add( new LootEntryItemStack(new ItemStack(Items.iron_ingot), 3, 10, 0.1f));
+        loot[2].add(new LootEntryItemStack(new ItemStack(Items.iron_ingot), 3, 10, 0.1f));
 
         minLootCount[3] = 3;
         maxLootCount[3] = 7;
