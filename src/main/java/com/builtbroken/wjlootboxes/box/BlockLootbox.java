@@ -43,7 +43,7 @@ public class BlockLootbox extends Block
     @Override
     public void breakBlock(World world, int x, int y, int z, Block block, int meta)
     {
-        WJLootBoxes.lootHandler.dropRandomLoot(world, x, y, z, meta);
+        WJLootBoxes.lootHandler.onLootdropped(world, x, y, z, meta);
     }
 
     @Override

@@ -1,8 +1,13 @@
 package com.builtbroken.wjlootboxes.loot;
 
+import com.builtbroken.wjlootboxes.WJLootBoxes;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.world.World;
 import net.minecraftforge.oredict.OreDictionary;
 
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 
 /**
@@ -73,6 +78,53 @@ public class LootEntry
             return stack.copy();
         }
         return null;
+    }
+
+    public void givePlayer(@Nullable EntityPlayer player, World world, int x, int y, int z)
+    {
+        //Get stack, will randomize for ore dictionary
+        ItemStack stack = getStack();
+
+        //Can return null for ore dictionary look up
+        if (stack != null && stack.getItem() != null)
+        {
+            //Randomize stack size
+            stack.stackSize = minCount;
+            if (minCount < maxCount)
+            {
+                stack.stackSize += world.rand.nextInt(maxCount - minCount);
+            }
+
+            //Drop items until stack is empty
+            while (stack != null && stack.stackSize > 0)
+            {
+                //Create
+                EntityItem item = new EntityItem(world);
+                item.setPosition(x + 0.5, y + 0.5, z + 0.5);
+
+                //Limit stack to stack max size
+                int itemLimit = Math.min(stack.getMaxStackSize(), stack.stackSize);
+                if (itemLimit < stack.stackSize)
+                {
+                    ItemStack copy = stack.copy();
+                    copy.stackSize = itemLimit;
+                    stack.stackSize -= itemLimit;
+                    item.setEntityItemStack(copy);
+                }
+                else
+                {
+                    item.setEntityItemStack(stack);
+                    stack = null;
+                }
+
+                //Spawn entity
+                world.spawnEntityInWorld(item);
+            }
+        }
+        else
+        {
+            WJLootBoxes.LOGGER.error("Received invalid stack from " + this);
+        }
     }
 
     public String toString()

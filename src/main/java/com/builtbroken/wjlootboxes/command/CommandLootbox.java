@@ -42,6 +42,22 @@ public class CommandLootbox extends CommandBase
         if (args == null || args.length == 0 || args[0].equals("?") || args[0].equalsIgnoreCase("help"))
         {
             //TODO print help
+            sender.addChatMessage(new ChatComponentText(getCommandUsage(sender) + " heldItem    - prints data about the item held"));
+            sender.addChatMessage(new ChatComponentText(getCommandUsage(sender) + " saveHeld    - saves held item data held to a file for use"));
+            sender.addChatMessage(new ChatComponentText(getCommandUsage(sender) + " loot <player> <tier>    - spawns random loot for the given tier of lootbox"));
+        }
+        else if (args[0].equalsIgnoreCase("loot"))
+        {
+            if (args.length >= 3)
+            {
+                EntityPlayer player = getPlayer(sender, args[1]);
+                int tier = parseInt(sender, args[2]);
+                WJLootBoxes.lootHandler.doDropRandomLoot(player, player.worldObj, (int) Math.floor(player.posX), (int) Math.floor(player.posY), (int) Math.floor(player.posZ), tier);
+            }
+            else
+            {
+                throw new CommandException("command.wjlootboxes:error.args.missing");
+            }
         }
         else if (args[0].equalsIgnoreCase("heldItem"))
         {
@@ -71,7 +87,7 @@ public class CommandLootbox extends CommandBase
             }
             else
             {
-                throw new CommandException("That command can only be run from a player");
+                throw new CommandException("command.wjlootboxes:error.player.needed");
             }
         }
         else if (args[0].equalsIgnoreCase("saveHeld"))

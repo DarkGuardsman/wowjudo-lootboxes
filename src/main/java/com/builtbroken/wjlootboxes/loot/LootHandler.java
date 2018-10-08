@@ -1,20 +1,24 @@
 package com.builtbroken.wjlootboxes.loot;
 
 import com.builtbroken.wjlootboxes.WJLootBoxes;
+import com.builtbroken.wjlootboxes.command.CommandSenderLootbox;
 import com.google.gson.*;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 import net.minecraft.block.Block;
+import net.minecraft.command.ICommandManager;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentData;
-import net.minecraft.entity.item.EntityItem;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 import net.minecraftforge.common.config.Configuration;
 
+import javax.annotation.Nullable;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +50,8 @@ public class LootHandler
     public final int[] minLootCount;
     /** Number of items to spawn per tier */
     public final int[] maxLootCount;
+    /** Command to run per tier */
+    public final String[] commands;
     /** Number of items to spawn per tier */
     public final boolean[] allowDuplicateDrops;
 
@@ -59,6 +65,34 @@ public class LootHandler
         minLootCount = new int[numberOfTiers];
         maxLootCount = new int[numberOfTiers];
         allowDuplicateDrops = new boolean[numberOfTiers];
+        commands = new String[numberOfTiers];
+    }
+
+    /**
+     * Triggers a chat command linked to the lootbox. Which will then
+     * trigger the correct output depending on how the boxes are setup.
+     * <p>
+     * By default this will call {@link #doDropRandomLoot(EntityPlayer, World, int, int, int, int)}
+     * however, can be setup to do anything.
+     *
+     * @param world
+     * @param x
+     * @param y
+     * @param z
+     * @param tier
+     */
+    public void onLootdropped(World world, int x, int y, int z, int tier)
+    {
+        if (tier >= 0 && tier < tiers && !world.isRemote)
+        {
+            MinecraftServer minecraftserver = MinecraftServer.getServer();
+
+            if (minecraftserver != null)
+            {
+                ICommandManager icommandmanager = minecraftserver.getCommandManager();
+                icommandmanager.executeCommand(new CommandSenderLootbox(world, x, y, z, tier), commands[tier]);
+            }
+        }
     }
 
     /**
@@ -70,7 +104,7 @@ public class LootHandler
      * @param z
      * @param tier
      */
-    public void dropRandomLoot(World world, int x, int y, int z, int tier)
+    public void doDropRandomLoot(@Nullable EntityPlayer player, World world, int x, int y, int z, int tier)
     {
         //Get loot to spawn
         LootEntry[] possibleItems = loot[tier];
@@ -118,49 +152,7 @@ public class LootHandler
             //Drop items
             for (LootEntry lootEntry : lootToSpawn)
             {
-                //Get stack, will randomize for ore dictionary
-                ItemStack stack = lootEntry.getStack();
-
-                //Can return null for ore dictionary look up
-                if (stack != null && stack.getItem() != null)
-                {
-                    //Randomize stack size
-                    stack.stackSize = lootEntry.minCount;
-                    if (lootEntry.minCount < lootEntry.maxCount)
-                    {
-                        stack.stackSize += world.rand.nextInt(lootEntry.maxCount - lootEntry.minCount);
-                    }
-
-                    //Drop items until stack is empty
-                    while (stack != null && stack.stackSize > 0)
-                    {
-                        //Create
-                        EntityItem item = new EntityItem(world);
-                        item.setPosition(x + 0.5, y + 0.5, z + 0.5);
-
-                        //Limit stack to stack max size
-                        int itemLimit = Math.min(stack.getMaxStackSize(), stack.stackSize);
-                        if (itemLimit < stack.stackSize)
-                        {
-                            ItemStack copy = stack.copy();
-                            copy.stackSize = itemLimit;
-                            stack.stackSize -= itemLimit;
-                            item.setEntityItemStack(copy);
-                        }
-                        else
-                        {
-                            item.setEntityItemStack(stack);
-                            stack = null;
-                        }
-
-                        //Spawn entity
-                        world.spawnEntityInWorld(item);
-                    }
-                }
-                else
-                {
-                    WJLootBoxes.LOGGER.error("Received invalid stack from " + lootEntry);
-                }
+                lootEntry.givePlayer(player, world, x, y, z);
             }
         }
     }
