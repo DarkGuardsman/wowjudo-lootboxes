@@ -43,6 +43,15 @@ public class LootEntryCommand implements ILootEntry
             if (minecraftserver != null)
             {
                 ICommandManager icommandmanager = minecraftserver.getCommandManager();
+                String command = this.command;
+                if (player != null)
+                {
+                    command = command.replace("%player%", player.getCommandSenderName());
+                }
+                else
+                {
+                    command = command.replace("%player%", "@p[r=3]");
+                }
                 icommandmanager.executeCommand(new CommandSenderLootbox(world, x, y, z, tier), command);
             }
         }

@@ -62,7 +62,14 @@ public class LootEntryGive extends LootEntry
                 ICommandManager icommandmanager = minecraftserver.getCommandManager();
 
                 String command = "/give ";
-                command += player.getCommandSenderName() + " ";
+                if (player != null)
+                {
+                    command += player.getCommandSenderName() + " ";
+                }
+                else
+                {
+                    command += "@p[r=3] ";
+                }
                 command += item + " ";
                 command += data + " ";
                 if (nbt != null)

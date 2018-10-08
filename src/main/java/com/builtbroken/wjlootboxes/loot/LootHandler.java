@@ -2,7 +2,7 @@ package com.builtbroken.wjlootboxes.loot;
 
 import com.builtbroken.wjlootboxes.WJLootBoxes;
 import com.builtbroken.wjlootboxes.command.CommandSenderLootbox;
-import com.builtbroken.wjlootboxes.loot.entry.*;
+import com.builtbroken.wjlootboxes.loot.entry.ILootEntry;
 import com.builtbroken.wjlootboxes.loot.entry.command.LootEntryCommand;
 import com.builtbroken.wjlootboxes.loot.entry.command.LootEntryGive;
 import com.builtbroken.wjlootboxes.loot.entry.stack.LootEntryItemStack;
@@ -36,6 +36,7 @@ public class LootHandler
 {
     public static final String JSON_MIN_LOOT = "loot_min_count";
     public static final String JSON_MAX_LOOT = "loot_max_count";
+    public static final String JSON_COMMAND = "loot_command";
     public static final String JSON_LOOT_ARRAY = "loot_entries";
 
     public static final String JSON_ITEM_ID = "item";
@@ -69,6 +70,11 @@ public class LootHandler
         maxLootCount = new int[numberOfTiers];
         allowDuplicateDrops = new boolean[numberOfTiers];
         commands = new String[numberOfTiers];
+
+        for (int i = 0; i < tiers; i++)
+        {
+            commands[i] = "/wjlootbox loot @p[r=3] " + i;
+        }
     }
 
     /**
@@ -84,7 +90,7 @@ public class LootHandler
      * @param z
      * @param tier
      */
-    public void onLootdropped(World world, int x, int y, int z, int tier)
+    public void onLootDropped(World world, int x, int y, int z, int tier)
     {
         if (tier >= 0 && tier < tiers && !world.isRemote)
         {
@@ -274,6 +280,7 @@ public class LootHandler
             {
                 minLootCount[tier] = Math.max(1, jsonData.getAsJsonPrimitive(JSON_MIN_LOOT).getAsInt());
                 maxLootCount[tier] = Math.max(1, jsonData.getAsJsonPrimitive(JSON_MAX_LOOT).getAsInt());
+                commands[tier] = jsonData.getAsJsonPrimitive(JSON_COMMAND).getAsString();
 
                 JsonArray lootEntries = jsonData.getAsJsonArray(JSON_LOOT_ARRAY);
                 loot[tier] = new LootEntryItemStack[lootEntries.size()];
@@ -342,8 +349,9 @@ public class LootHandler
     {
         //Generate JSON for output
         JsonObject object = new JsonObject();
-        object.add(JSON_MIN_LOOT, new JsonPrimitive(minLootCount[tier]));
-        object.add(JSON_MAX_LOOT, new JsonPrimitive(maxLootCount[tier]));
+        object.addProperty(JSON_MIN_LOOT, minLootCount[tier]);
+        object.addProperty(JSON_MAX_LOOT, maxLootCount[tier]);
+        object.addProperty(JSON_COMMAND, commands[tier]);
 
         JsonArray array = new JsonArray();
         if (loot[tier] != null)
