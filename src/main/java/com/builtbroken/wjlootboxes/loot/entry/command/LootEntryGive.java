@@ -61,23 +61,48 @@ public class LootEntryGive extends LootEntry
             {
                 ICommandManager icommandmanager = minecraftserver.getCommandManager();
 
-                String command = "/give ";
-                if (player != null)
+                //Calculate give amount
+                int count = Math.max(1, minCount);
+                if (maxCount > minCount)
                 {
-                    command += player.getCommandSenderName() + " ";
-                }
-                else
-                {
-                    command += "@p[r=3] ";
-                }
-                command += item + " ";
-                command += data + " ";
-                if (nbt != null)
-                {
-                    command += nbt;
+                    count += world.rand.nextInt(maxCount);
                 }
 
-                icommandmanager.executeCommand(new CommandSenderLootbox(world, x, y, z, tier), command);
+                while (count > 0)
+                {
+                    //Build command
+                    String command = "/give ";
+                    if (player != null)
+                    {
+                        command += player.getCommandSenderName() + " ";
+                    }
+                    else
+                    {
+                        command += "@p[r=3] ";
+                    }
+
+                    //Add item
+                    command += item + " ";
+
+                    //Give command is limited by 64 items
+                    int giveCount = Math.min(64, count);
+                    count -= giveCount;
+
+                    //Add count
+                    command += giveCount + " ";
+
+                    //Add metadata
+                    command += data + " ";
+
+                    //Add NBT if it is present
+                    if (nbt != null)
+                    {
+                        command += nbt;
+                    }
+
+                    //Run command
+                    icommandmanager.executeCommand(new CommandSenderLootbox(world, x, y, z, tier), command);
+                }
             }
         }
     }

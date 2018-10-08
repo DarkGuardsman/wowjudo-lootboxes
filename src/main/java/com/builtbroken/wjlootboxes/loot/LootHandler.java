@@ -25,6 +25,7 @@ import javax.annotation.Nullable;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Handles loading, saving, storing, and distributing loot randomly
@@ -49,7 +50,7 @@ public class LootHandler
     /** Tiers of loot boxes that exist */
     public final int tiers;
     /** Array of loot tables for each tier */
-    public final ILootEntry[][] loot;
+    public final List<ILootEntry>[] loot;
     /** Number of items to spawn per tier */
     public final int[] minLootCount;
     /** Number of items to spawn per tier */
@@ -65,7 +66,7 @@ public class LootHandler
     public LootHandler(int numberOfTiers)
     {
         tiers = numberOfTiers;
-        loot = new ILootEntry[numberOfTiers][];
+        loot = new List[numberOfTiers];
         minLootCount = new int[numberOfTiers];
         maxLootCount = new int[numberOfTiers];
         allowDuplicateDrops = new boolean[numberOfTiers];
@@ -73,7 +74,8 @@ public class LootHandler
 
         for (int i = 0; i < tiers; i++)
         {
-            commands[i] = "/wjlootbox loot @p[r=3] " + i;
+            commands[i] = "/wjlootbox loot %player% " + i;
+            loot[i] = new ArrayList();
         }
     }
 
@@ -90,7 +92,7 @@ public class LootHandler
      * @param z
      * @param tier
      */
-    public void onLootDropped(World world, int x, int y, int z, int tier)
+    public void onLootDropped(@Nullable EntityPlayer player, World world, int x, int y, int z, int tier)
     {
         if (tier >= 0 && tier < tiers && !world.isRemote)
         {
@@ -99,7 +101,16 @@ public class LootHandler
             if (minecraftserver != null)
             {
                 ICommandManager icommandmanager = minecraftserver.getCommandManager();
-                icommandmanager.executeCommand(new CommandSenderLootbox(world, x, y, z, tier), commands[tier]);
+                String command = commands[tier];
+                if (player != null)
+                {
+                    command = command.replace("%player%", player.getCommandSenderName());
+                }
+                else
+                {
+                    command = command.replace("%player%", "@p[r=3]");
+                }
+                icommandmanager.executeCommand(new CommandSenderLootbox(world, x, y, z, tier), command);
             }
         }
     }
@@ -116,7 +127,7 @@ public class LootHandler
     public void doDropRandomLoot(@Nullable EntityPlayer player, World world, int x, int y, int z, int tier)
     {
         //Get loot to spawn
-        ILootEntry[] possibleItems = loot[tier];
+        List<ILootEntry> possibleItems = loot[tier];
 
         //Get items to spawn
         int itemsToSpawn = minLootCount[tier];
@@ -141,7 +152,7 @@ public class LootHandler
                 for (int r = 0; r < 6; r++)
                 {
                     //Get random entry to allow a chance for all entries to be used
-                    ILootEntry lootEntry = possibleItems.length > 1 ? possibleItems[world.rand.nextInt(possibleItems.length - 1)] : possibleItems[0];
+                    ILootEntry lootEntry = possibleItems.size() > 1 ? possibleItems.get(world.rand.nextInt(possibleItems.size() - 1)) : possibleItems.get(0);
 
                     //Null check, loaded data can result in nulls in rare cases
                     if (lootEntry != null)
@@ -271,53 +282,51 @@ public class LootHandler
     {
         if (element.isJsonObject())
         {
-            final JsonObject jsonData = element.getAsJsonObject();
+            final JsonObject tierJsonData = element.getAsJsonObject();
 
             //Validate data
-            if (hasKey(jsonData, tier, JSON_MIN_LOOT, "This is required to indicate the min number of loot entries to drop.")
-                    && hasKey(jsonData, tier, JSON_MAX_LOOT, "This is required to indicate the max number of loot entries to drop.")
-                    && hasKey(jsonData, tier, JSON_LOOT_ARRAY, "This is required to generate items to drop"))
+            if (hasKey(tierJsonData, tier, JSON_MIN_LOOT, "This is required to indicate the min number of loot entries to drop.")
+                    && hasKey(tierJsonData, tier, JSON_MAX_LOOT, "This is required to indicate the max number of loot entries to drop.")
+                    && hasKey(tierJsonData, tier, JSON_LOOT_ARRAY, "This is required to generate items to drop"))
             {
-                minLootCount[tier] = Math.max(1, jsonData.getAsJsonPrimitive(JSON_MIN_LOOT).getAsInt());
-                maxLootCount[tier] = Math.max(1, jsonData.getAsJsonPrimitive(JSON_MAX_LOOT).getAsInt());
-                commands[tier] = jsonData.getAsJsonPrimitive(JSON_COMMAND).getAsString();
+                minLootCount[tier] = Math.max(1, tierJsonData.getAsJsonPrimitive(JSON_MIN_LOOT).getAsInt());
+                maxLootCount[tier] = Math.max(1, tierJsonData.getAsJsonPrimitive(JSON_MAX_LOOT).getAsInt());
+                commands[tier] = tierJsonData.getAsJsonPrimitive(JSON_COMMAND).getAsString();
 
-                JsonArray lootEntries = jsonData.getAsJsonArray(JSON_LOOT_ARRAY);
-                loot[tier] = new LootEntryItemStack[lootEntries.size()];
+                final JsonArray lootEntries = tierJsonData.getAsJsonArray(JSON_LOOT_ARRAY);
 
-                int i = 0;
                 for (JsonElement lootEntryElement : lootEntries)
                 {
                     if (lootEntryElement.isJsonObject())
                     {
-                        final JsonObject lootData = lootEntryElement.getAsJsonObject();
+                        final JsonObject lootJsonData = lootEntryElement.getAsJsonObject();
 
                         //Load data
-                        final String itemName = lootData.get(JSON_ITEM_ID).getAsString();
+                        final String itemName = lootJsonData.get(JSON_ITEM_ID).getAsString();
 
                         //Create entry
                         ILootEntry lootEntry;
                         if (itemName.startsWith("ore@"))
                         {
-                            lootEntry = LootEntryOre.newEntry(itemName.substring(4), jsonData);
+                            lootEntry = LootEntryOre.newEntry(itemName.substring(4), lootJsonData);
                         }
                         else if (itemName.startsWith("give@"))
                         {
-                            lootEntry = LootEntryGive.newEntry(itemName.substring(5), jsonData);
+                            lootEntry = LootEntryGive.newEntry(itemName.substring(5), lootJsonData);
                         }
                         else if (itemName.startsWith("command@"))
                         {
-                            lootEntry = LootEntryCommand.newEntry(itemName.substring(8), jsonData);
+                            lootEntry = LootEntryCommand.newEntry(itemName.substring(8), lootJsonData);
                         }
                         else
                         {
-                            lootEntry = LootEntryItemStack.newEntry(itemName, jsonData);
+                            lootEntry = LootEntryItemStack.newEntry(itemName, lootJsonData);
                         }
 
                         if (lootEntry != null)
                         {
                             //Add to array
-                            loot[tier][i++] = lootEntry;
+                            loot[tier].add(lootEntry);
                         }
                         else
                         {
@@ -402,33 +411,30 @@ public class LootHandler
         minLootCount[0] = 1;
         maxLootCount[0] = 3;
         allowDuplicateDrops[0] = true;
-        loot[0] = new LootEntryItemStack[5];
-        loot[0][0] = new LootEntryItemStack(new ItemStack(Items.stick), 5, 100, 1);
-        loot[0][1] = new LootEntryItemStack(new ItemStack(Items.leather_boots), 1, 1, 0.1f);
-        loot[0][2] = new LootEntryItemStack(new ItemStack(Items.carrot), 5, 10, 0.5f);
-        loot[0][3] = new LootEntryItemStack(new ItemStack(Items.stone_axe), 1, 2, 0.3f);
-        loot[0][4] = new LootEntryItemStack(new ItemStack(Items.cooked_beef), 3, 10, 0.1f);
+        loot[0].add(new LootEntryItemStack(new ItemStack(Items.stick), 5, 100, 1));
+        loot[0].add(new LootEntryItemStack(new ItemStack(Items.leather_boots), 1, 1, 0.1f));
+        loot[0].add(new LootEntryItemStack(new ItemStack(Items.carrot), 5, 10, 0.5f));
+        loot[0].add(new LootEntryItemStack(new ItemStack(Items.stone_axe), 1, 2, 0.3f));
+        loot[0].add(new LootEntryItemStack(new ItemStack(Items.cooked_beef), 3, 10, 0.1f));
 
 
         minLootCount[1] = 1;
         maxLootCount[1] = 5;
         allowDuplicateDrops[1] = true;
-        loot[1] = new LootEntryItemStack[5];
-        loot[1][0] = new LootEntryItemStack(new ItemStack(Blocks.stone), 5, 100, 1);
-        loot[1][1] = new LootEntryItemStack(new ItemStack(Items.leather_chestplate), 1, 1, 0.1f);
-        loot[1][2] = new LootEntryItemStack(new ItemStack(Items.flint_and_steel), 1, 1, 0.5f);
-        loot[1][3] = new LootEntryItemStack(new ItemStack(Items.stone_pickaxe), 1, 3, 0.3f);
-        loot[1][4] = new LootEntryItemStack(new ItemStack(Items.chainmail_helmet), 1, 1, 0.1f);
+        loot[1].add(new LootEntryItemStack(new ItemStack(Blocks.stone), 5, 100, 1));
+        loot[1].add(new LootEntryItemStack(new ItemStack(Items.leather_chestplate), 1, 1, 0.1f));
+        loot[1].add(new LootEntryItemStack(new ItemStack(Items.flint_and_steel), 1, 1, 0.5f));
+        loot[1].add(new LootEntryItemStack(new ItemStack(Items.stone_pickaxe), 1, 3, 0.3f));
+        loot[1].add(new LootEntryItemStack(new ItemStack(Items.chainmail_helmet), 1, 1, 0.1f));
 
         minLootCount[2] = 2;
         maxLootCount[2] = 6;
         allowDuplicateDrops[2] = true;
-        loot[2] = new LootEntryItemStack[5];
-        loot[2][0] = new LootEntryItemStack(new ItemStack(Blocks.dirt), 5, 100, 1);
-        loot[2][1] = new LootEntryItemStack(new ItemStack(Items.leather_boots), 1, 1, 0.1f);
-        loot[2][2] = new LootEntryItemStack(new ItemStack(Blocks.bookshelf), 5, 10, 0.5f);
-        loot[2][3] = new LootEntryItemStack(new ItemStack(Items.iron_axe), 1, 2, 0.3f);
-        loot[2][4] = new LootEntryItemStack(new ItemStack(Items.iron_ingot), 3, 10, 0.1f);
+        loot[2].add(new LootEntryItemStack(new ItemStack(Blocks.dirt), 5, 100, 1));
+        loot[2].add(new LootEntryItemStack(new ItemStack(Items.leather_boots), 1, 1, 0.1f));
+        loot[2].add(new LootEntryItemStack(new ItemStack(Blocks.bookshelf), 5, 10, 0.5f));
+        loot[2].add(new LootEntryItemStack(new ItemStack(Items.iron_axe), 1, 2, 0.3f));
+        loot[2].add( new LootEntryItemStack(new ItemStack(Items.iron_ingot), 3, 10, 0.1f));
 
         minLootCount[3] = 3;
         maxLootCount[3] = 7;
@@ -446,22 +452,21 @@ public class LootHandler
             }
         }
 
-        loot[3] = books.stream().map(b -> new LootEntryItemStack(b, 1, 3, 0.1f)).toArray(LootEntryItemStack[]::new);
+        loot[3] = books.stream().map(b -> new LootEntryItemStack(b, 1, 3, 0.1f)).collect(Collectors.toList());
 
         minLootCount[4] = 4;
         maxLootCount[4] = 10;
         allowDuplicateDrops[4] = true;
-        loot[4] = new LootEntryItemStack[10];
-        loot[4][0] = new LootEntryItemStack(new ItemStack(Items.flint), 5, 100, 1);
-        loot[4][1] = new LootEntryItemStack(new ItemStack(Items.diamond_axe), 1, 1, 0.1f);
-        loot[4][2] = new LootEntryItemStack(new ItemStack(Items.blaze_rod), 5, 10, 0.5f);
-        loot[4][3] = new LootEntryItemStack(new ItemStack(Items.diamond_boots), 1, 2, 0.3f);
-        loot[4][4] = new LootEntryItemStack(new ItemStack(Items.diamond_hoe), 1, 2, 0.1f);
-        loot[4][5] = new LootEntryItemStack(new ItemStack(Items.diamond_horse_armor), 1, 1, 0.1f);
-        loot[4][6] = new LootEntryItemStack(new ItemStack(Items.diamond_pickaxe), 1, 1, 0.1f);
-        loot[4][7] = new LootEntryItemStack(new ItemStack(Items.diamond_shovel), 1, 2, 0.5f);
-        loot[4][8] = new LootEntryItemStack(new ItemStack(Items.diamond_sword), 1, 2, 0.3f);
-        loot[4][9] = new LootEntryItemStack(new ItemStack(Items.diamond), 3, 10, 0.8f);
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.flint), 5, 100, 1));
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.diamond_axe), 1, 1, 0.1f));
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.blaze_rod), 5, 10, 0.5f));
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.diamond_boots), 1, 2, 0.3f));
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.diamond_hoe), 1, 2, 0.1f));
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.diamond_horse_armor), 1, 1, 0.1f));
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.diamond_pickaxe), 1, 1, 0.1f));
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.diamond_shovel), 1, 2, 0.5f));
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.diamond_sword), 1, 2, 0.3f));
+        loot[4].add(new LootEntryItemStack(new ItemStack(Items.diamond), 3, 10, 0.8f));
 
         saveLootData();
     }
