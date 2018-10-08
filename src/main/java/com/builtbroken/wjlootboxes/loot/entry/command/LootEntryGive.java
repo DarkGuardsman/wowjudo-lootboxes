@@ -1,9 +1,12 @@
 package com.builtbroken.wjlootboxes.loot.entry.command;
 
+import com.builtbroken.wjlootboxes.command.CommandSenderLootbox;
 import com.builtbroken.wjlootboxes.loot.LootHandler;
 import com.builtbroken.wjlootboxes.loot.entry.LootEntry;
 import com.google.gson.JsonObject;
+import net.minecraft.command.ICommandManager;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 
 import javax.annotation.Nullable;
@@ -50,7 +53,26 @@ public class LootEntryGive extends LootEntry
     @Override
     public void givePlayer(@Nullable EntityPlayer player, World world, int x, int y, int z, int tier)
     {
+        if (player != null)
+        {
+            MinecraftServer minecraftserver = MinecraftServer.getServer();
 
+            if (minecraftserver != null)
+            {
+                ICommandManager icommandmanager = minecraftserver.getCommandManager();
+
+                String command = "/give ";
+                command += player.getCommandSenderName() + " ";
+                command += item + " ";
+                command += data + " ";
+                if (nbt != null)
+                {
+                    command += nbt;
+                }
+
+                icommandmanager.executeCommand(new CommandSenderLootbox(world, x, y, z, tier), command);
+            }
+        }
     }
 
     @Override
