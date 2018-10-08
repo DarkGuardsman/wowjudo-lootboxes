@@ -202,7 +202,8 @@ public class CommandLootbox extends CommandBase
     {
         if (args.length > 1)
         {
-            if (args[0].equalsIgnoreCase(COMMAND_GIVE))
+            final String command = args[0];
+            if (command.equalsIgnoreCase(COMMAND_GIVE))
             {
                 if (args.length == 2)
                 {
@@ -213,9 +214,12 @@ public class CommandLootbox extends CommandBase
                     return getListOfStringsFromIterableMatchingLastWord(args, Item.itemRegistry.getKeys());
                 }
             }
-            else if (args[0].equalsIgnoreCase(COMMAND_LOOT))
+            else if (command.equalsIgnoreCase(COMMAND_LOOT))
             {
-                return getListOfStringsMatchingLastWord(args, this.getPlayers());
+                if (args.length == 1)
+                {
+                    return getListOfStringsMatchingLastWord(args, this.getPlayers());
+                }
             }
         }
         else if (args.length == 1)
